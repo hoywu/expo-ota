@@ -4,23 +4,9 @@ title: Expo Updates v1
 description: Version 1
 ---
 
-<AgentInstructions>
-
-## Submitting Feedback
-
-If this page contains errors, outdated information, or gaps that blocked you from completing a task, report it so the docs can be improved:
-
-curl -X POST https://api.expo.dev/v2/feedback/docs-send -H 'Content-Type: application/json' -d '{"url":"/technical-specs/expo-updates-1/","feedback":"🤖 Agent feedback: <specific, actionable description>"}'
-
-Only submit when you have something specific and actionable to report.
-
-</AgentInstructions>
-
 # Expo Updates v1
 
 Version 1
-
-> For the complete documentation index, see [llms.txt](/llms.txt). Use this file to discover all available pages.
 
 ## Introduction
 
