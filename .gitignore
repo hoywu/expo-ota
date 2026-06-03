@@ -27,6 +27,20 @@ go.work.sum
 # env file
 .env
 
+# Finder (MacOS) folder config
+.DS_Store
+
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+.codebuddy/
+.agent/
+.agents/
+.claude/
+.cursor/
+.gemini/
+.github/skills/
+.opencode/
+.qoder/
+.qwen/
+.trae/
