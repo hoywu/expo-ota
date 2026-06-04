@@ -1,5 +1,9 @@
 # Expo OTA 自建服务实现指导文档
 
+> 状态：已归档，仅作分析参考保留，不作为实现依据
+
+---
+
 > 技术栈：**Go-Zero + PostgreSQL + Vue 3 + 对象存储**
 > 目标：实现一个符合 [Expo Updates v1 协议](https://docs.expo.dev/technical-specs/expo-updates-1/) 的自建 OTA 服务端，并提供一个能够管理项目/分支/发布/回滚/灰度的 Dashboard。
 >

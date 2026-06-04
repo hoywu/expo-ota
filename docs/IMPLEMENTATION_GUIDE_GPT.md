@@ -1,5 +1,9 @@
 # Expo Updates 自建服务实现指导文档
 
+> 状态：已归档，仅作分析参考保留，不作为实现依据
+
+---
+
 技术栈：go-zero + PostgreSQL + Vue 3 + 对象存储 + Redis + Prometheus/Grafana
 
 目标：实现一个符合 Expo Updates v1 协议、可生产部署、可灰度发布、可观测、可审计的自托管 Expo OTA 服务端，并提供 Vue dashboard 管理面板。
