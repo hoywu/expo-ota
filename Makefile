@@ -19,6 +19,10 @@ new-sql:
 migrate:
 	$(call with_server_env, go run ./db)
 
+TABLES := users,apps,code_signing_keys,runtime_versions,assets,updates,update_assets,api_tokens,manifest_requests,client_events,audit_logs
+gen-model:
+	$(call with_server_env, goctl model pg datasource --url="$$DB_URL" --table="$(TABLES)" --cache=false --dir=./db/models)
+
 # Development
 dev-admin:
 	$(call with_server_env, go run ./api/admin -f ./api/admin/etc/admin-api.yaml)
