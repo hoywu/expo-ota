@@ -1,9 +1,7 @@
 -- +goose Up
-CREATE EXTENSION IF NOT EXISTS citext;
-
 CREATE TABLE users (
     id            uuid PRIMARY KEY DEFAULT uuidv7(),
-    username      citext UNIQUE NOT NULL,
+    username      text UNIQUE NOT NULL,
     password_hash text NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     last_login_at timestamptz,
@@ -90,12 +88,13 @@ CREATE INDEX updates_app_created_idx
     WHERE deleted_at IS NULL;
 
 CREATE TABLE update_assets (
+    id         uuid PRIMARY KEY DEFAULT uuidv7(),
     update_id  uuid NOT NULL REFERENCES updates(id) ON DELETE CASCADE,
     asset_id   uuid NOT NULL REFERENCES assets(id),
     asset_key  text NOT NULL,                          -- manifest.assets[].key (md5 hex)
     file_ext   text,
     sort_order int NOT NULL DEFAULT 0,
-    PRIMARY KEY (update_id, asset_key)
+    UNIQUE (update_id, asset_key)
 );
 CREATE INDEX update_assets_asset_idx ON update_assets (asset_id);
 
@@ -115,7 +114,7 @@ CREATE INDEX api_tokens_app_active_idx
     ON api_tokens (app_id) WHERE revoked_at IS NULL;
 
 CREATE TABLE manifest_requests (
-    id               bigint GENERATED ALWAYS AS IDENTITY,
+    id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     app_id           uuid NOT NULL,
     occurred_at      timestamptz NOT NULL DEFAULT now(),
     runtime_version  text NOT NULL,
@@ -124,18 +123,18 @@ CREATE TABLE manifest_requests (
     served_update_id uuid,
     result           text NOT NULL
                      CHECK (result IN ('update','no_update','rollback','not_found','bad_request','not_acceptable','error')),
-    http_status      smallint NOT NULL,
-    PRIMARY KEY (occurred_at, id)
-) PARTITION BY RANGE (occurred_at);
+    http_status      smallint NOT NULL
+);
 
-CREATE TABLE manifest_requests_default PARTITION OF manifest_requests DEFAULT;
+-- 分区示例保留作参考；启用时需把 PK 改回 (occurred_at, id) 才能 PARTITION BY RANGE:
+-- CREATE TABLE manifest_requests_default PARTITION OF manifest_requests DEFAULT;
 -- CREATE TABLE manifest_requests_y2026m06 PARTITION OF manifest_requests
 --     FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
 -- CREATE TABLE manifest_requests_y2026m07 PARTITION OF manifest_requests
 --     FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
 
 CREATE TABLE client_events (
-    id              bigint GENERATED ALWAYS AS IDENTITY,
+    id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     app_id          uuid NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     occurred_at     timestamptz NOT NULL,              -- 客户端声称的时间
     received_at     timestamptz NOT NULL DEFAULT now(),
@@ -151,14 +150,14 @@ CREATE TABLE client_events (
     os_version      text,
     duration_ms     int,
     error_code      text,
-    error_message   text,
-    PRIMARY KEY (received_at, id)
-) PARTITION BY RANGE (received_at);
+    error_message   text
+);
 
-CREATE INDEX client_events_app_event_idx
+CREATE UNIQUE INDEX client_events_app_event_idx
     ON client_events (app_id, event_id);
 
-CREATE TABLE client_events_default PARTITION OF client_events DEFAULT;
+-- 分区示例保留作参考；启用时需把 PK 改回 (received_at, id) 才能 PARTITION BY RANGE:
+-- CREATE TABLE client_events_default PARTITION OF client_events DEFAULT;
 -- CREATE TABLE client_events_y2026m06 PARTITION OF client_events
 --     FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
 -- CREATE TABLE client_events_y2026m07 PARTITION OF client_events
@@ -172,7 +171,7 @@ CREATE TABLE audit_logs (
     target_type   text,
     target_id     text,
     request_id    text,
-    ip            inet,
+    ip            text,
     user_agent    text,
     payload       jsonb NOT NULL DEFAULT '{}',
     occurred_at   timestamptz NOT NULL DEFAULT now()
@@ -198,5 +197,3 @@ DROP TABLE IF EXISTS code_signing_keys;
 DROP TABLE IF EXISTS apps;
 
 DROP TABLE IF EXISTS users;
-
-DROP EXTENSION IF EXISTS citext;
