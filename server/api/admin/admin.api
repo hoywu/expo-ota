@@ -22,12 +22,17 @@ type (
 		Password string `json:"password"`
 	}
 	LoginResp {
-		// AccessToken string `json:"accessToken"`
-		// ExpiresAt   string `json:"expiresAt"`
-		UserId      string `json:"userId"`
-		Username    string `json:"username"`
-		CreatedAt   string `json:"createdAt"`
-		LastLoginAt string `json:"lastLoginAt,optional"`
+		AccessToken  string `json:"accessToken"`
+		RefreshToken string `json:"refreshToken"`
+		ExpiresIn    int64  `json:"expiresIn"`
+	}
+	RefreshReq {
+		RefreshToken string `json:"refreshToken"`
+	}
+	RefreshResp {
+		AccessToken  string `json:"accessToken"`
+		RefreshToken string `json:"refreshToken"`
+		ExpiresIn    int64  `json:"expiresIn"`
 	}
 	MeResp {
 		UserId      string `json:"userId"`
@@ -357,6 +362,9 @@ service admin-api {
 	// —— 鉴权 (6.1) ——
 	@handler Login
 	post /login (LoginReq) returns (LoginResp)
+
+	@handler Refresh
+	post /refresh (RefreshReq) returns (RefreshResp)
 
 	// —— 健康检查 (6.9) ——
 	@handler Healthz

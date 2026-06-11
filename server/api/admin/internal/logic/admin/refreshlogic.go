@@ -12,42 +12,42 @@ import (
 	"github.com/hoywu/expo-ota/server/db/models"
 
 	"github.com/zeromicro/go-zero/core/logx"
-	"golang.org/x/crypto/bcrypt"
 )
 
-type LoginLogic struct {
+type RefreshLogic struct {
 	logx.Logger
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 }
 
-func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic {
-	return &LoginLogic{
+func NewRefreshLogic(ctx context.Context, svcCtx *svc.ServiceContext) *RefreshLogic {
+	return &RefreshLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
 		svcCtx: svcCtx,
 	}
 }
 
-func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err error) {
-	user, err := l.svcCtx.UsersModel.FindOneByUsername(l.ctx, req.Username)
+func (l *RefreshLogic) Refresh(req *types.RefreshReq) (resp *types.RefreshResp, err error) {
+	claims, err := parseRefreshToken(l.svcCtx.Config.RefreshSecret, req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := userIDFromClaims(claims)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := l.svcCtx.UsersModel.FindOne(l.ctx, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
-			return nil, errInvalidCredentials
+			return nil, errUnauthorized
 		}
 		return nil, err
 	}
 
-	if user.DisabledAt.Valid {
-		return nil, errUserDisabled
-	}
-
-	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
-		return nil, errInvalidCredentials
-	}
-
-	user.LastLoginAt = nullableNow()
-	if err := l.svcCtx.UsersModel.Update(l.ctx, user); err != nil {
+	if err := validateActiveUser(user); err != nil {
 		return nil, err
 	}
 
@@ -61,5 +61,5 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 		return nil, err
 	}
 
-	return tokensToLoginResp(accessToken, refreshToken, l.svcCtx.Config.Auth.AccessExpire), nil
+	return tokensToRefreshResp(accessToken, refreshToken, l.svcCtx.Config.Auth.AccessExpire), nil
 }

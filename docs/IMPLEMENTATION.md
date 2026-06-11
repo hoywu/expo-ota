@@ -532,11 +532,12 @@ ON CONFLICT (app_id, event_id) DO NOTHING;
 
 ### 6.1 鉴权
 
-| Method | Path                | 说明                                                |
-| ------ | ------------------- | --------------------------------------------------- |
-| POST   | `/api/admin/login`  | `{username, password}` → `{accessToken, expiresAt}` |
-| POST   | `/api/admin/logout` | no-op（前端丢 token），保留对称                     |
-| GET    | `/api/admin/me`     | 探活 + 返回当前 user 信息                           |
+| Method | Path                | 说明                                                                                 |
+| ------ | ------------------- | ------------------------------------------------------------------------------------ |
+| POST   | `/api/admin/login`  | `{username, password}` → `{accessToken, refreshToken, expiresIn}`                    |
+| POST   | `/api/admin/refresh`| `{refreshToken}` → `{accessToken, refreshToken, expiresIn}`，无状态轮换，旧 token 到期前仍有效 |
+| POST   | `/api/admin/logout` | no-op（前端丢 token），保留对称                                                      |
+| GET    | `/api/admin/me`     | 探活 + 返回当前 user 信息                                                            |
 
 ### 6.2 App
 

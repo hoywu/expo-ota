@@ -5,9 +5,11 @@ package admin
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
+	"github.com/hoywu/expo-ota/server/db/models"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,7 +29,22 @@ func NewMeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MeLogic {
 }
 
 func (l *MeLogic) Me() (resp *types.MeResp, err error) {
-	// todo: add your logic here and delete this line
+	userID, err := userIDFromContext(l.ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	user, err := l.svcCtx.UsersModel.FindOne(l.ctx, userID)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, errUnauthorized
+		}
+		return nil, err
+	}
+
+	if err := validateActiveUser(user); err != nil {
+		return nil, err
+	}
+
+	return userToMeResp(user), nil
 }

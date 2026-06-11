@@ -27,7 +27,5 @@ func NewLogoutLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LogoutLogi
 }
 
 func (l *LogoutLogic) Logout() (resp *types.EmptyResp, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+	return &types.EmptyResp{}, nil
 }

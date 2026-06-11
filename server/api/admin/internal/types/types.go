@@ -162,10 +162,9 @@ type LoginReq struct {
 }
 
 type LoginResp struct {
-	UserId      string `json:"userId"`
-	Username    string `json:"username"`
-	CreatedAt   string `json:"createdAt"`
-	LastLoginAt string `json:"lastLoginAt,optional"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
 }
 
 type MeResp struct {
@@ -230,6 +229,16 @@ type PublishResp struct {
 type ReadyResp struct {
 	Status string `json:"status"`
 	Db     string `json:"db"`
+}
+
+type RefreshReq struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+type RefreshResp struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
 }
 
 type RollbackResp struct {

@@ -30,6 +30,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/readyz",
 				Handler: admin.ReadyzHandler(serverCtx),
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/refresh",
+				Handler: admin.RefreshHandler(serverCtx),
+			},
 		},
 		rest.WithPrefix("/api/admin"),
 	)

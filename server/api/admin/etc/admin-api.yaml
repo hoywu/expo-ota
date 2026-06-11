@@ -1,4 +1,9 @@
 Name: admin-api
 Host: 0.0.0.0
-Port: 8888
+Port: 8081
 DataSource: $(DB_URL)
+Auth:
+  AccessSecret: $(AUTH_ACCESS_SECRET)
+  AccessExpire: 86400 # Access Token 有效期 24 小时
+RefreshSecret: $(AUTH_REFRESH_SECRET)
+RefreshExpire: 604800 # Refresh Token 有效期 7 天

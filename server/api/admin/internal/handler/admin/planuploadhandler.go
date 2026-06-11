@@ -6,6 +6,7 @@ package admin
 import (
 	"net/http"
 
+	"github.com/hoywu/expo-ota/server/api/admin/internal/httperr"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/logic/admin"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
@@ -16,7 +17,7 @@ func PlanUploadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.PlanReq
 		if err := httpx.Parse(r, &req); err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
+			httpx.ErrorCtx(r.Context(), w, httperr.BadRequest(err))
 			return
 		}
 

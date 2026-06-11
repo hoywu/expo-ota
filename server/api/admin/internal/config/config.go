@@ -12,4 +12,6 @@ type Config struct {
 		AccessSecret string
 		AccessExpire int64
 	}
+	RefreshSecret string
+	RefreshExpire int64
 }

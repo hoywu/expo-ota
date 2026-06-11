@@ -13,16 +13,16 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-func LoginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+func RefreshHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.LoginReq
+		var req types.RefreshReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, httperr.BadRequest(err))
 			return
 		}
 
-		l := admin.NewLoginLogic(r.Context(), svcCtx)
-		resp, err := l.Login(&req)
+		l := admin.NewRefreshLogic(r.Context(), svcCtx)
+		resp, err := l.Refresh(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
