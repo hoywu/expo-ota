@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	admin "github.com/hoywu/expo-ota/server/api/admin/internal/handler/admin"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -16,9 +17,172 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				Method:  http.MethodGet,
-				Path:    "/from/:name",
-				Handler: AdminHandler(serverCtx),
+				Path:    "/healthz",
+				Handler: admin.HealthzHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/login",
+				Handler: admin.LoginHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/readyz",
+				Handler: admin.ReadyzHandler(serverCtx),
 			},
 		},
+		rest.WithPrefix("/api/admin"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps",
+				Handler: admin.ListAppsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps",
+				Handler: admin.CreateAppHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug",
+				Handler: admin.GetAppHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/apps/:appSlug",
+				Handler: admin.UpdateAppHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/apps/:appSlug",
+				Handler: admin.DeleteAppHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/api-tokens",
+				Handler: admin.ListApiTokensHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/api-tokens",
+				Handler: admin.CreateApiTokenHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/apps/:appSlug/api-tokens/:tokenId",
+				Handler: admin.RevokeApiTokenHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/audit-logs",
+				Handler: admin.ListAuditLogsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/signing-key",
+				Handler: admin.GetSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/apps/:appSlug/signing-key",
+				Handler: admin.PatchSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/apps/:appSlug/signing-key",
+				Handler: admin.DeleteSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/signing-key/generate",
+				Handler: admin.GenerateSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/signing-key/import",
+				Handler: admin.ImportSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/updates",
+				Handler: admin.ListUpdatesHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/updates/:updateId",
+				Handler: admin.GetUpdateHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/apps/:appSlug/updates/:updateId",
+				Handler: admin.DeleteUpdateHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/updates/:updateId/publish",
+				Handler: admin.PublishUpdateHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/updates/:updateId/rollback",
+				Handler: admin.RollbackUpdateHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/updates/cleanup",
+				Handler: admin.CleanupUpdatesHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/uploads/finalize",
+				Handler: admin.FinalizeUploadHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/uploads/plan",
+				Handler: admin.PlanUploadHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/logout",
+				Handler: admin.LogoutHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/me",
+				Handler: admin.MeHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/users",
+				Handler: admin.ListUsersHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/users",
+				Handler: admin.CreateUserHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/users/:userId/disable",
+				Handler: admin.DisableUserHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/users/:userId/enable",
+				Handler: admin.EnableUserHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/users/:userId/password",
+				Handler: admin.ChangePasswordHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin"),
 	)
 }

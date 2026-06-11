@@ -3,10 +3,332 @@
 
 package types
 
-type Request struct {
-	Name string `path:"name,options=you|me"`
+type ActionResp struct {
+	UserId string `json:"userId"`
 }
 
-type Response struct {
+type AppResp struct {
+	Id          string `json:"id"`
+	AppSlug     string `json:"appSlug"`
+	Name        string `json:"name"`
+	Description string `json:"description,optional"`
+	CreatedAt   string `json:"createdAt"`
+}
+
+type AppSlugPath struct {
+	AppSlug string `path:"appSlug"`
+}
+
+type AuditLogItem struct {
+	Id          string                 `json:"id"`
+	AppSlug     string                 `json:"appSlug,optional"`
+	ActorUserId string                 `json:"actorUserId,optional"`
+	Action      string                 `json:"action"`
+	TargetType  string                 `json:"targetType,optional"`
+	TargetId    string                 `json:"targetId,optional"`
+	RequestId   string                 `json:"requestId,optional"`
+	Ip          string                 `json:"ip,optional"`
+	UserAgent   string                 `json:"userAgent,optional"`
+	Payload     map[string]interface{} `json:"payload,optional"`
+	OccurredAt  string                 `json:"occurredAt"`
+}
+
+type ChangePasswordReq struct {
+	UserId   string `path:"userId"`
+	Password string `json:"password"`
+}
+
+type CleanupReq struct {
+	AppSlug     string `path:"appSlug"`
+	KeepLatestN int    `json:"keepLatestN"`
+}
+
+type CleanupResp struct {
+	DeletedUpdateIds []string `json:"deletedUpdateIds"`
+	OrphanAssetCount int      `json:"orphanAssetCount"`
+}
+
+type CreateAppReq struct {
+	AppSlug     string `json:"appSlug"`
+	Name        string `json:"name"`
+	Description string `json:"description,optional"`
+}
+
+type CreateTokenReq struct {
+	AppSlug   string `path:"appSlug"`
+	Name      string `json:"name"`
+	ExpiresAt string `json:"expiresAt,optional"`
+}
+
+type CreateTokenResp struct {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Token     string `json:"token"`
+	ExpiresAt string `json:"expiresAt,optional"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type CreateUserReq struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type EmptyResp struct {
+}
+
+type ErrorResp struct {
+	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+type FinalizeReq struct {
+	AppSlug          string                 `path:"appSlug"`
+	RuntimeVersion   string                 `json:"runtimeVersion"`
+	Platform         string                 `json:"platform,options=ios|android"`
+	ManifestMetadata map[string]interface{} `json:"manifestMetadata,optional"`
+	ExpoConfig       map[string]interface{} `json:"expoConfig,optional"`
+	Message          string                 `json:"message,optional"`
+	GitCommitHash    string                 `json:"gitCommitHash,optional"`
+	Assets           []PlanAssetItem        `json:"assets"`
+}
+
+type FinalizeResp struct {
+	UpdateId     string `json:"updateId"`
+	ManifestUuid string `json:"manifestUuid"`
+	Status       string `json:"status"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+type GenerateSigningKeyReq struct {
+	AppSlug string `path:"appSlug"`
+	KeyId   string `json:"keyId"`
+}
+
+type HealthResp struct {
+	Status string `json:"status"`
+}
+
+type ImportSigningKeyReq struct {
+	AppSlug      string `path:"appSlug"`
+	KeyId        string `json:"keyId"`
+	Algorithm    string `json:"algorithm,default=rsa-v1_5-sha256,optional"`
+	PublicKeyPem string `json:"publicKeyPem"`
+}
+
+type ListAppsResp struct {
+	Items []AppResp `json:"items"`
+}
+
+type ListAuditLogsReq struct {
+	AppSlug string `path:"appSlug"`
+	Action  string `form:"action,optional"`
+	Actor   string `form:"actor,optional"`
+	From    string `form:"from,optional"`
+	To      string `form:"to,optional"`
+	Limit   int    `form:"limit,default=50"`
+	Cursor  string `form:"cursor,optional"`
+}
+
+type ListAuditLogsResp struct {
+	Items      []AuditLogItem `json:"items"`
+	NextCursor string         `json:"nextCursor,optional"`
+}
+
+type ListTokensResp struct {
+	Items []TokenItem `json:"items"`
+}
+
+type ListUpdatesReq struct {
+	AppSlug        string `path:"appSlug"`
+	Platform       string `form:"platform,options=ios|android,optional"`
+	RuntimeVersion string `form:"runtimeVersion,optional"`
+	Status         string `form:"status,options=pending|published,optional"`
+	Limit          int    `form:"limit,default=20"`
+	Cursor         string `form:"cursor,optional"`
+}
+
+type ListUpdatesResp struct {
+	Items      []UpdateListItem `json:"items"`
+	NextCursor string           `json:"nextCursor,optional"`
+}
+
+type ListUsersResp struct {
+	Items []UserItem `json:"items"`
+}
+
+type LoginReq struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResp struct {
+	UserId      string `json:"userId"`
+	Username    string `json:"username"`
+	CreatedAt   string `json:"createdAt"`
+	LastLoginAt string `json:"lastLoginAt,optional"`
+}
+
+type MeResp struct {
+	UserId      string `json:"userId"`
+	Username    string `json:"username"`
+	CreatedAt   string `json:"createdAt"`
+	LastLoginAt string `json:"lastLoginAt,optional"`
+}
+
+type PatchSigningKeyReq struct {
+	AppSlug string `path:"appSlug"`
+	Enabled bool   `json:"enabled"`
+}
+
+type PlanAssetItem struct {
+	Key         string `json:"key"`
+	Sha256      string `json:"sha256"`
+	Size        int64  `json:"size"`
+	ContentType string `json:"contentType"`
+	FileExt     string `json:"fileExt,optional"`
+}
+
+type PlanMissingItem struct {
+	Key         string            `json:"key"`
+	Sha256      string            `json:"sha256"`
+	Size        int64             `json:"size"`
+	ContentType string            `json:"contentType"`
+	PutUrl      string            `json:"putUrl"`
+	PutHeaders  map[string]string `json:"putHeaders"`
+	FinalUrl    string            `json:"finalUrl"`
+}
+
+type PlanReq struct {
+	AppSlug          string                 `path:"appSlug"`
+	RuntimeVersion   string                 `json:"runtimeVersion"`
+	Platform         string                 `json:"platform,options=ios|android"`
+	ManifestMetadata map[string]interface{} `json:"manifestMetadata,optional"`
+	ExpoConfig       map[string]interface{} `json:"expoConfig,optional"`
+	Message          string                 `json:"message,optional"`
+	GitCommitHash    string                 `json:"gitCommitHash,optional"`
+	Assets           []PlanAssetItem        `json:"assets"`
+}
+
+type PlanResp struct {
+	Missing []PlanMissingItem `json:"missing"`
+	Reuse   []PlanReuseItem   `json:"reuse"`
+}
+
+type PlanReuseItem struct {
+	Key      string `json:"key"`
+	Sha256   string `json:"sha256"`
+	FinalUrl string `json:"finalUrl"`
+}
+
+type PublishResp struct {
+	UpdateId     string `json:"updateId"`
+	ManifestUuid string `json:"manifestUuid"`
+	Status       string `json:"status"`
+	PublishedAt  string `json:"publishedAt"`
+}
+
+type ReadyResp struct {
+	Status string `json:"status"`
+	Db     string `json:"db"`
+}
+
+type RollbackResp struct {
+	UpdateId     string `json:"updateId"`
+	ManifestUuid string `json:"manifestUuid"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+type SigningKeyResp struct {
+	KeyId         string `json:"keyId"`
+	Algorithm     string `json:"algorithm"`
+	PublicKeyPem  string `json:"publicKeyPem"`
+	Enabled       bool   `json:"enabled"`
+	CreatedAt     string `json:"createdAt"`
+	DisabledAt    string `json:"disabledAt,optional"`
+	HasPrivateKey bool   `json:"hasPrivateKey"`
+}
+
+type TokenIdPath struct {
+	AppSlug string `path:"appSlug"`
+	TokenId string `path:"tokenId"`
+}
+
+type TokenItem struct {
+	Id         string   `json:"id"`
+	Name       string   `json:"name"`
+	CreatedBy  string   `json:"createdBy"`
+	Scopes     []string `json:"scopes"`
+	LastUsedAt string   `json:"lastUsedAt,optional"`
+	ExpiresAt  string   `json:"expiresAt,optional"`
+	CreatedAt  string   `json:"createdAt"`
+	RevokedAt  string   `json:"revokedAt,optional"`
+}
+
+type UpdateAppReq struct {
+	AppSlug     string `path:"appSlug"`
+	Name        string `json:"name,optional"`
+	Description string `json:"description,optional"`
+}
+
+type UpdateAssetItem struct {
+	Key     string `json:"key"`
+	Sha256  string `json:"sha256"`
+	Size    int64  `json:"size"`
+	Url     string `json:"url"`
+	FileExt string `json:"fileExt,optional"`
+}
+
+type UpdateDetailResp struct {
+	Id              string                 `json:"id"`
+	AppSlug         string                 `json:"appSlug"`
+	RuntimeVersion  string                 `json:"runtimeVersion"`
+	Platform        string                 `json:"platform"`
+	ManifestUuid    string                 `json:"manifestUuid"`
+	Status          string                 `json:"status"`
+	Message         string                 `json:"message,optional"`
+	GitCommitHash   string                 `json:"gitCommitHash,optional"`
+	CreatedAt       string                 `json:"createdAt"`
+	PublishedAt     string                 `json:"publishedAt,optional"`
+	LaunchAssetKey  string                 `json:"launchAssetKey"`
+	LaunchAssetUrl  string                 `json:"launchAssetUrl"`
+	Assets          []UpdateAssetItem      `json:"assets"`
+	ManifestPreview map[string]interface{} `json:"manifestPreview"`
+	Stats           UpdateStatsResp        `json:"stats"`
+}
+
+type UpdateIdPath struct {
+	AppSlug  string `path:"appSlug"`
+	UpdateId string `path:"updateId"`
+}
+
+type UpdateListItem struct {
+	Id             string `json:"id"`
+	RuntimeVersion string `json:"runtimeVersion"`
+	Platform       string `json:"platform"`
+	ManifestUuid   string `json:"manifestUuid"`
+	Status         string `json:"status"`
+	Message        string `json:"message,optional"`
+	CreatedAt      string `json:"createdAt"`
+	PublishedAt    string `json:"publishedAt,optional"`
+}
+
+type UpdateStatsResp struct {
+	RequestedDevices int `json:"requestedDevices"`
+	SucceededDevices int `json:"succeededDevices"`
+	FailedDevices    int `json:"failedDevices"`
+	DurationMinMs    int `json:"durationMinMs,optional"`
+	DurationMaxMs    int `json:"durationMaxMs,optional"`
+	DurationAvgMs    int `json:"durationAvgMs,optional"`
+}
+
+type UserIdPath struct {
+	UserId string `path:"userId"`
+}
+
+type UserItem struct {
+	Id          string `json:"id"`
+	Username    string `json:"username"`
+	CreatedAt   string `json:"createdAt"`
+	LastLoginAt string `json:"lastLoginAt,optional"`
+	DisabledAt  string `json:"disabledAt,optional"`
 }

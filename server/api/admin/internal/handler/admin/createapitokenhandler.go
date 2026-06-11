@@ -1,27 +1,27 @@
 // Code scaffolded by goctl. Safe to edit.
 // goctl 1.10.1
 
-package handler
+package admin
 
 import (
 	"net/http"
 
-	"github.com/hoywu/expo-ota/server/api/admin/internal/logic"
+	"github.com/hoywu/expo-ota/server/api/admin/internal/logic/admin"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-func AdminHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+func CreateApiTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.Request
+		var req types.CreateTokenReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
-		l := logic.NewAdminLogic(r.Context(), svcCtx)
-		resp, err := l.Admin(&req)
+		l := admin.NewCreateApiTokenLogic(r.Context(), svcCtx)
+		resp, err := l.CreateApiToken(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

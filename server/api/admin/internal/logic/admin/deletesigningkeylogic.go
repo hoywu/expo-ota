@@ -1,7 +1,7 @@
 // Code scaffolded by goctl. Safe to edit.
 // goctl 1.10.1
 
-package logic
+package admin
 
 import (
 	"context"
@@ -12,21 +12,21 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type AdminLogic struct {
+type DeleteSigningKeyLogic struct {
 	logx.Logger
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 }
 
-func NewAdminLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminLogic {
-	return &AdminLogic{
+func NewDeleteSigningKeyLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DeleteSigningKeyLogic {
+	return &DeleteSigningKeyLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
 		svcCtx: svcCtx,
 	}
 }
 
-func (l *AdminLogic) Admin(req *types.Request) (resp *types.Response, err error) {
+func (l *DeleteSigningKeyLogic) DeleteSigningKey(req *types.AppSlugPath) (resp *types.EmptyResp, err error) {
 	// todo: add your logic here and delete this line
 
 	return
