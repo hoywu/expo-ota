@@ -67,8 +67,8 @@ CREATE TABLE updates (
     platform           text NOT NULL CHECK (platform IN ('ios','android')),
     manifest_uuid      uuid NOT NULL,                  -- 协议字段 manifest.id
     launch_asset_id    uuid NOT NULL REFERENCES assets(id),
-    status             text NOT NULL DEFAULT 'published'
-                       CHECK (status IN ('published')),
+    status             text NOT NULL DEFAULT 'pending'
+                       CHECK (status IN ('pending','published')),
     message            text,
     git_commit_hash    text,
     manifest_metadata  jsonb NOT NULL DEFAULT '{}',
@@ -77,12 +77,17 @@ CREATE TABLE updates (
     manifest_snapshot  jsonb NOT NULL,                 -- 缓存的 manifest JSON 字节
     rolled_back_from   uuid REFERENCES updates(id),
     created_at         timestamptz NOT NULL DEFAULT now(),
+    published_at       timestamptz,
     deleted_at         timestamptz,
+    CHECK (
+        (status = 'pending' AND published_at IS NULL) OR
+        (status = 'published' AND published_at IS NOT NULL)
+    ),
     UNIQUE (app_id, manifest_uuid)
 );
 CREATE INDEX updates_latest_idx
-    ON updates (app_id, runtime_version_id, platform, created_at DESC)
-    WHERE deleted_at IS NULL;
+    ON updates (app_id, runtime_version_id, platform, published_at DESC)
+    WHERE deleted_at IS NULL AND status = 'published';
 CREATE INDEX updates_app_created_idx
     ON updates (app_id, created_at DESC)
     WHERE deleted_at IS NULL;
@@ -167,7 +172,7 @@ CREATE TABLE audit_logs (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     app_id        uuid REFERENCES apps(id) ON DELETE SET NULL,
     actor_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
-    action        text NOT NULL,                       -- publish_update / rollback_update / delete_update / cleanup_updates / create_app / create_user / login_failed / ...
+    action        text NOT NULL,                       -- finalize_update / publish_update / rollback_update / delete_update / cleanup_updates / create_app / create_user / login_failed / ...
     target_type   text,
     target_id     text,
     request_id    text,

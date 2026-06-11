@@ -13,7 +13,7 @@ _Avoid_: project, application, bundle
 _Avoid_: native version, build version, sdk version
 
 **Update**:
-一次发布产物，对应协议中的 manifest + assets 集合。状态为 `published`（无 pending 状态，finalize 即提交）。
+一次发布产物，对应协议中的 manifest + assets 集合。状态为 `pending` 或 `published`；`pending` 不可被 manifest 查询，finalize 后仅保存草稿，管理员点击发布后切到 `published`。`published_at` 表示真正对客户端生效的时间。
 _Avoid_: release, build, version
 
 **Asset**:
@@ -43,8 +43,12 @@ _Avoid_: log, history
 _Avoid_: stage, prepare
 
 **Finalize**:
-发布第二阶段：CLI 通知服务端所有资产已上传，服务端 HEAD 校验后原子写入 `updates` 与 `update_assets` 表。
+发布第二阶段：CLI 通知服务端所有资产已上传，服务端 HEAD 校验后原子写入 `updates` 与 `update_assets` 表，并生成 `pending` 草稿 update。
 _Avoid_: commit, publish
+
+**Publish**:
+管理员将已 finalize 的 `pending` update 切到 `published`，并写入 `published_at`；协议端只下发已发布 update。
+_Avoid_: finalize, deploy
 
 **RepublishPrevious** (UI 名称: Rollback):
 复制历史 update 为一条新 update，资产复用，URL 不变。
@@ -83,4 +87,5 @@ _Avoid_: signing key, cert key
 - Asset URL 不可变：以 sha256_base64url 命名，COS 路径级公有读，禁止修改或删除
 - AppSlug 创建后不可改：URL 里有"承诺"语义，修改会强制 binary 升级
 - Manifest UUID 在 publish 时一次性计算并持久化：避免不同请求算出的 UUID 漂移
+- PublishedAt 表示真正对客户端生效的发布时间；latest update 以 `published_at` 排序，不以 `created_at` 排序
 - Update 软删后不可恢复：硬删除方向走到底
