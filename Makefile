@@ -3,12 +3,19 @@ SHELL := bash
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 .ONESHELL:
-.PHONY: new-sql migrate dev-admin dev-protocol infra-up infra-down infra-clear infra-log
+.PHONY: gen-admin-api gen-protocol-api new-sql migrate gen-model dev-admin dev-protocol infra-up infra-down infra-clear infra-log
 
 SERVER_ENV_FILE := server/deploy/.env
 define with_server_env
 	@( set -a; . $(SERVER_ENV_FILE); set +a; cd server && $(1) )
 endef
+
+# Code generation
+gen-admin-api:
+	$(call with_server_env, goctl api go --api ./api/admin/admin.api --dir ./api/admin)
+
+gen-protocol-api:
+	$(call with_server_env, goctl api go --api ./api/protocol/protocol.api --dir ./api/protocol)
 
 # Database migrations
 new-sql:
