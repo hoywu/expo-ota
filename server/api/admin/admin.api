@@ -1,15 +1,475 @@
 syntax = "v1"
 
-type Request {
-	Name string `path:"name,options=you|me"`
-}
+// =====================================================================
+// 公共类型
+// =====================================================================
+type (
+	// EmptyResp 通用空响应（delete / action 端点无 body 时使用）
+	EmptyResp  {}
+	// ErrorResp 通用错误响应（与 go-zero 默认错误体兼容）
+	ErrorResp {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+)
 
-type Response {
-	Message string `json:"message"`
-}
+// =====================================================================
+// 鉴权 (6.1)
+// =====================================================================
+type (
+	LoginReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	LoginResp {
+		// AccessToken string `json:"accessToken"`
+		// ExpiresAt   string `json:"expiresAt"`
+		UserId      string `json:"userId"`
+		Username    string `json:"username"`
+		CreatedAt   string `json:"createdAt"`
+		LastLoginAt string `json:"lastLoginAt,optional"`
+	}
+	MeResp {
+		UserId      string `json:"userId"`
+		Username    string `json:"username"`
+		CreatedAt   string `json:"createdAt"`
+		LastLoginAt string `json:"lastLoginAt,optional"`
+	}
+)
 
+// =====================================================================
+// App (6.2)
+// =====================================================================
+type (
+	AppSlugPath {
+		AppSlug string `path:"appSlug"`
+	}
+	CreateAppReq {
+		AppSlug     string `json:"appSlug"`
+		Name        string `json:"name"`
+		Description string `json:"description,optional"`
+	}
+	UpdateAppReq {
+		AppSlug     string `path:"appSlug"`
+		Name        string `json:"name,optional"`
+		Description string `json:"description,optional"`
+	}
+	AppResp {
+		Id          string `json:"id"`
+		AppSlug     string `json:"appSlug"`
+		Name        string `json:"name"`
+		Description string `json:"description,optional"`
+		CreatedAt   string `json:"createdAt"`
+	}
+	ListAppsResp {
+		Items []AppResp `json:"items"`
+	}
+)
+
+// =====================================================================
+// Update (6.3)
+// =====================================================================
+type (
+	ListUpdatesReq {
+		AppSlug        string `path:"appSlug"`
+		Platform       string `form:"platform,options=ios|android,optional"`
+		RuntimeVersion string `form:"runtimeVersion,optional"`
+		Status         string `form:"status,options=pending|published,optional"`
+		Limit          int    `form:"limit,default=20"`
+		Cursor         string `form:"cursor,optional"`
+	}
+	UpdateIdPath {
+		AppSlug  string `path:"appSlug"`
+		UpdateId string `path:"updateId"`
+	}
+	UpdateDetailResp {
+		Id              string                 `json:"id"`
+		AppSlug         string                 `json:"appSlug"`
+		RuntimeVersion  string                 `json:"runtimeVersion"`
+		Platform        string                 `json:"platform"`
+		ManifestUuid    string                 `json:"manifestUuid"`
+		Status          string                 `json:"status"`
+		Message         string                 `json:"message,optional"`
+		GitCommitHash   string                 `json:"gitCommitHash,optional"`
+		CreatedAt       string                 `json:"createdAt"`
+		PublishedAt     string                 `json:"publishedAt,optional"`
+		LaunchAssetKey  string                 `json:"launchAssetKey"`
+		LaunchAssetUrl  string                 `json:"launchAssetUrl"`
+		Assets          []UpdateAssetItem      `json:"assets"`
+		ManifestPreview map[string]interface{} `json:"manifestPreview"`
+		Stats           UpdateStatsResp        `json:"stats"`
+	}
+	UpdateAssetItem {
+		Key     string `json:"key"`
+		Sha256  string `json:"sha256"`
+		Size    int64  `json:"size"`
+		Url     string `json:"url"`
+		FileExt string `json:"fileExt,optional"`
+	}
+	UpdateStatsResp {
+		RequestedDevices int `json:"requestedDevices"`
+		SucceededDevices int `json:"succeededDevices"`
+		FailedDevices    int `json:"failedDevices"`
+		DurationMinMs    int `json:"durationMinMs,optional"`
+		DurationMaxMs    int `json:"durationMaxMs,optional"`
+		DurationAvgMs    int `json:"durationAvgMs,optional"`
+	}
+	UpdateListItem {
+		Id             string `json:"id"`
+		RuntimeVersion string `json:"runtimeVersion"`
+		Platform       string `json:"platform"`
+		ManifestUuid   string `json:"manifestUuid"`
+		Status         string `json:"status"`
+		Message        string `json:"message,optional"`
+		CreatedAt      string `json:"createdAt"`
+		PublishedAt    string `json:"publishedAt,optional"`
+	}
+	ListUpdatesResp {
+		Items      []UpdateListItem `json:"items"`
+		NextCursor string           `json:"nextCursor,optional"`
+	}
+	CleanupReq {
+		AppSlug     string `path:"appSlug"`
+		KeepLatestN int    `json:"keepLatestN"`
+	}
+	CleanupResp {
+		DeletedUpdateIds []string `json:"deletedUpdateIds"`
+		OrphanAssetCount int      `json:"orphanAssetCount"`
+	}
+	RollbackResp {
+		UpdateId     string `json:"updateId"`
+		ManifestUuid string `json:"manifestUuid"`
+		CreatedAt    string `json:"createdAt"`
+	}
+	PublishResp {
+		UpdateId     string `json:"updateId"`
+		ManifestUuid string `json:"manifestUuid"`
+		Status       string `json:"status"`
+		PublishedAt  string `json:"publishedAt"`
+	}
+)
+
+// =====================================================================
+// 上传 (6.4 / §7)
+// =====================================================================
+type (
+	PlanAssetItem {
+		Key         string `json:"key"`
+		Sha256      string `json:"sha256"`
+		Size        int64  `json:"size"`
+		ContentType string `json:"contentType"`
+		FileExt     string `json:"fileExt,optional"`
+	}
+	PlanReq {
+		AppSlug          string                 `path:"appSlug"`
+		RuntimeVersion   string                 `json:"runtimeVersion"`
+		Platform         string                 `json:"platform,options=ios|android"`
+		ManifestMetadata map[string]interface{} `json:"manifestMetadata,optional"`
+		ExpoConfig       map[string]interface{} `json:"expoConfig,optional"`
+		Message          string                 `json:"message,optional"`
+		GitCommitHash    string                 `json:"gitCommitHash,optional"`
+		Assets           []PlanAssetItem        `json:"assets"`
+	}
+	FinalizeReq {
+		AppSlug          string                 `path:"appSlug"`
+		RuntimeVersion   string                 `json:"runtimeVersion"`
+		Platform         string                 `json:"platform,options=ios|android"`
+		ManifestMetadata map[string]interface{} `json:"manifestMetadata,optional"`
+		ExpoConfig       map[string]interface{} `json:"expoConfig,optional"`
+		Message          string                 `json:"message,optional"`
+		GitCommitHash    string                 `json:"gitCommitHash,optional"`
+		Assets           []PlanAssetItem        `json:"assets"`
+	}
+	PlanMissingItem {
+		Key         string            `json:"key"`
+		Sha256      string            `json:"sha256"`
+		Size        int64             `json:"size"`
+		ContentType string            `json:"contentType"`
+		PutUrl      string            `json:"putUrl"`
+		PutHeaders  map[string]string `json:"putHeaders"`
+		FinalUrl    string            `json:"finalUrl"`
+	}
+	PlanReuseItem {
+		Key      string `json:"key"`
+		Sha256   string `json:"sha256"`
+		FinalUrl string `json:"finalUrl"`
+	}
+	PlanResp {
+		Missing []PlanMissingItem `json:"missing"`
+		Reuse   []PlanReuseItem   `json:"reuse"`
+	}
+	FinalizeResp {
+		UpdateId     string `json:"updateId"`
+		ManifestUuid string `json:"manifestUuid"`
+		Status       string `json:"status"`
+		CreatedAt    string `json:"createdAt"`
+	}
+)
+
+// =====================================================================
+// API Token (6.5)
+// =====================================================================
+type (
+	TokenIdPath {
+		AppSlug string `path:"appSlug"`
+		TokenId string `path:"tokenId"`
+	}
+	CreateTokenReq {
+		AppSlug   string `path:"appSlug"`
+		Name      string `json:"name"`
+		ExpiresAt string `json:"expiresAt,optional"`
+	}
+	CreateTokenResp {
+		Id        string `json:"id"`
+		Name      string `json:"name"`
+		Token     string `json:"token"`
+		ExpiresAt string `json:"expiresAt,optional"`
+		CreatedAt string `json:"createdAt"`
+	}
+	TokenItem {
+		Id         string   `json:"id"`
+		Name       string   `json:"name"`
+		CreatedBy  string   `json:"createdBy"`
+		Scopes     []string `json:"scopes"`
+		LastUsedAt string   `json:"lastUsedAt,optional"`
+		ExpiresAt  string   `json:"expiresAt,optional"`
+		CreatedAt  string   `json:"createdAt"`
+		RevokedAt  string   `json:"revokedAt,optional"`
+	}
+	ListTokensResp {
+		Items []TokenItem `json:"items"`
+	}
+)
+
+// =====================================================================
+// Code Signing (6.6)
+// =====================================================================
+type (
+	SigningKeyResp {
+		KeyId         string `json:"keyId"`
+		Algorithm     string `json:"algorithm"`
+		PublicKeyPem  string `json:"publicKeyPem"`
+		Enabled       bool   `json:"enabled"`
+		CreatedAt     string `json:"createdAt"`
+		DisabledAt    string `json:"disabledAt,optional"`
+		HasPrivateKey bool   `json:"hasPrivateKey"`
+	}
+	GenerateSigningKeyReq {
+		AppSlug string `path:"appSlug"`
+		KeyId   string `json:"keyId"`
+	}
+	ImportSigningKeyReq {
+		AppSlug      string `path:"appSlug"`
+		KeyId        string `json:"keyId"`
+		Algorithm    string `json:"algorithm,default=rsa-v1_5-sha256,optional"`
+		PublicKeyPem string `json:"publicKeyPem"`
+	}
+	PatchSigningKeyReq {
+		AppSlug string `path:"appSlug"`
+		Enabled bool   `json:"enabled"`
+	}
+)
+
+// =====================================================================
+// 用户 (6.7)
+// =====================================================================
+type (
+	UserIdPath {
+		UserId string `path:"userId"`
+	}
+	CreateUserReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	ChangePasswordReq {
+		UserId   string `path:"userId"`
+		Password string `json:"password"`
+	}
+	UserItem {
+		Id          string `json:"id"`
+		Username    string `json:"username"`
+		CreatedAt   string `json:"createdAt"`
+		LastLoginAt string `json:"lastLoginAt,optional"`
+		DisabledAt  string `json:"disabledAt,optional"`
+	}
+	ListUsersResp {
+		Items []UserItem `json:"items"`
+	}
+	ActionResp {
+		UserId string `json:"userId"`
+	}
+)
+
+// =====================================================================
+// Audit Log (6.8)
+// =====================================================================
+type (
+	ListAuditLogsReq {
+		AppSlug string `path:"appSlug"`
+		Action  string `form:"action,optional"`
+		Actor   string `form:"actor,optional"`
+		From    string `form:"from,optional"`
+		To      string `form:"to,optional"`
+		Limit   int    `form:"limit,default=50"`
+		Cursor  string `form:"cursor,optional"`
+	}
+	AuditLogItem {
+		Id          string                 `json:"id"`
+		AppSlug     string                 `json:"appSlug,optional"`
+		ActorUserId string                 `json:"actorUserId,optional"`
+		Action      string                 `json:"action"`
+		TargetType  string                 `json:"targetType,optional"`
+		TargetId    string                 `json:"targetId,optional"`
+		RequestId   string                 `json:"requestId,optional"`
+		Ip          string                 `json:"ip,optional"`
+		UserAgent   string                 `json:"userAgent,optional"`
+		Payload     map[string]interface{} `json:"payload,optional"`
+		OccurredAt  string                 `json:"occurredAt"`
+	}
+	ListAuditLogsResp {
+		Items      []AuditLogItem `json:"items"`
+		NextCursor string         `json:"nextCursor,optional"`
+	}
+)
+
+// =====================================================================
+// 健康检查 (6.9)
+// =====================================================================
+type (
+	HealthResp {
+		Status string `json:"status"`
+	}
+	ReadyResp {
+		Status string `json:"status"`
+		Db     string `json:"db"`
+	}
+)
+
+// =====================================================================
+// Service Block 1: 公开端点（无鉴权）
+// login / healthz / readyz 走 Nginx 限速（§11.3），不需要 JWT。
+// =====================================================================
+@server (
+	prefix: /api/admin
+	group:  admin
+)
 service admin-api {
-	@handler AdminHandler
-	get /from/:name (Request) returns (Response)
+	// —— 鉴权 (6.1) ——
+	@handler Login
+	post /login (LoginReq) returns (LoginResp)
+
+	// —— 健康检查 (6.9) ——
+	@handler Healthz
+	get /healthz returns (HealthResp)
+
+	@handler Readyz
+	get /readyz returns (ReadyResp)
+}
+
+// =====================================================================
+// Service Block 2: 鉴权端点（Bearer JWT，HS256，24h 过期，见 §11）
+// 全部管理写操作都受 jwt 中间件保护；handler.RegisterHandlers 生成的
+// routes.go 中会以 rest.WithJwt(serverCtx.Config.Auth.AccessSecret) 包裹。
+// =====================================================================
+@server (
+	prefix: /api/admin
+	group:  admin
+	jwt:    Auth
+)
+service admin-api {
+	// —— Auth (6.1) ——
+	@handler Logout
+	post /logout returns (EmptyResp)
+
+	@handler Me
+	get /me returns (MeResp)
+
+	// —— App (6.2) ——
+	@handler ListApps
+	get /apps returns (ListAppsResp)
+
+	@handler CreateApp
+	post /apps (CreateAppReq) returns (AppResp)
+
+	@handler GetApp
+	get /apps/:appSlug (AppSlugPath) returns (AppResp)
+
+	@handler UpdateApp
+	patch /apps/:appSlug (UpdateAppReq) returns (AppResp)
+
+	@handler DeleteApp
+	delete /apps/:appSlug (AppSlugPath) returns (EmptyResp)
+
+	// —— Update (6.3) ——
+	@handler ListUpdates
+	get /apps/:appSlug/updates (ListUpdatesReq) returns (ListUpdatesResp)
+
+	@handler GetUpdate
+	get /apps/:appSlug/updates/:updateId (UpdateIdPath) returns (UpdateDetailResp)
+
+	@handler DeleteUpdate
+	delete /apps/:appSlug/updates/:updateId (UpdateIdPath) returns (EmptyResp)
+
+	@handler RollbackUpdate
+	post /apps/:appSlug/updates/:updateId/rollback (UpdateIdPath) returns (RollbackResp)
+
+	@handler PublishUpdate
+	post /apps/:appSlug/updates/:updateId/publish (UpdateIdPath) returns (PublishResp)
+
+	@handler CleanupUpdates
+	post /apps/:appSlug/updates/cleanup (CleanupReq) returns (CleanupResp)
+
+	// —— Upload (6.4 / §7) ——
+	@handler PlanUpload
+	post /apps/:appSlug/uploads/plan (PlanReq) returns (PlanResp)
+
+	@handler FinalizeUpload
+	post /apps/:appSlug/uploads/finalize (FinalizeReq) returns (FinalizeResp)
+
+	// —— API Token (6.5) ——
+	@handler ListApiTokens
+	get /apps/:appSlug/api-tokens (AppSlugPath) returns (ListTokensResp)
+
+	@handler CreateApiToken
+	post /apps/:appSlug/api-tokens (CreateTokenReq) returns (CreateTokenResp)
+
+	@handler RevokeApiToken
+	delete /apps/:appSlug/api-tokens/:tokenId (TokenIdPath) returns (EmptyResp)
+
+	// —— Code Signing (6.6) ——
+	@handler GetSigningKey
+	get /apps/:appSlug/signing-key (AppSlugPath) returns (SigningKeyResp)
+
+	@handler GenerateSigningKey
+	post /apps/:appSlug/signing-key/generate (GenerateSigningKeyReq) returns (SigningKeyResp)
+
+	@handler ImportSigningKey
+	post /apps/:appSlug/signing-key/import (ImportSigningKeyReq) returns (SigningKeyResp)
+
+	@handler PatchSigningKey
+	patch /apps/:appSlug/signing-key (PatchSigningKeyReq) returns (SigningKeyResp)
+
+	@handler DeleteSigningKey
+	delete /apps/:appSlug/signing-key (AppSlugPath) returns (EmptyResp)
+
+	// —— User (6.7) ——
+	@handler ListUsers
+	get /users returns (ListUsersResp)
+
+	@handler CreateUser
+	post /users (CreateUserReq) returns (UserItem)
+
+	@handler ChangePassword
+	patch /users/:userId/password (ChangePasswordReq) returns (EmptyResp)
+
+	@handler DisableUser
+	post /users/:userId/disable (UserIdPath) returns (ActionResp)
+
+	@handler EnableUser
+	post /users/:userId/enable (UserIdPath) returns (ActionResp)
+
+	// —— Audit Log (6.8) ——
+	@handler ListAuditLogs
+	get /apps/:appSlug/audit-logs (ListAuditLogsReq) returns (ListAuditLogsResp)
 }
 
