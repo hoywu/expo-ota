@@ -16,6 +16,15 @@
 
 ---
 
+## 测试规范 (Testing)
+
+- 实现 server 的 API logic（`server/api/*/internal/logic/`）时，必须使用 `mockgen`（go.uber.org/mock）mock 依赖的 model 接口，编写必要的单元测试。
+- 修改已有 logic 时，同步更新对应的 `*_test.go`。
+- mock 生成在 `server/db/models/` 包内（接口含未导出方法，需 `-source` + `-self_package`），参考已有的 `usersmodel_mock.go` 头部命令。
+- 运行测试：`make test`。
+
+---
+
 ## Agent skills
 
 ### Issue tracker
