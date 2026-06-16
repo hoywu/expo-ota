@@ -23,6 +23,10 @@ const (
 func newTestSvcCtx(ctrl *gomock.Controller) (*svc.ServiceContext, *models.MockUsersModel) {
 	usersModel := models.NewMockUsersModel(ctrl)
 
+	// Audit writes are best-effort side effects; accept them in every test.
+	auditLogsModel := models.NewMockAuditLogsModel(ctrl)
+	auditLogsModel.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
 	c := config.Config{
 		RefreshSecret: testRefreshSecret,
 		RefreshExpire: testRefreshExpire,
@@ -31,8 +35,9 @@ func newTestSvcCtx(ctrl *gomock.Controller) (*svc.ServiceContext, *models.MockUs
 	c.Auth.AccessExpire = testAccessExpire
 
 	return &svc.ServiceContext{
-		Config:     c,
-		UsersModel: usersModel,
+		Config:         c,
+		UsersModel:     usersModel,
+		AuditLogsModel: auditLogsModel,
 	}, usersModel
 }
 

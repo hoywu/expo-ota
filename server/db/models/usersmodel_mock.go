@@ -80,6 +80,45 @@ func (c *MockUsersModelDeleteCall) DoAndReturn(f func(context.Context, string) e
 	return c
 }
 
+// FindAll mocks base method.
+func (m *MockUsersModel) FindAll(ctx context.Context) ([]*Users, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindAll", ctx)
+	ret0, _ := ret[0].([]*Users)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindAll indicates an expected call of FindAll.
+func (mr *MockUsersModelMockRecorder) FindAll(ctx any) *MockUsersModelFindAllCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAll", reflect.TypeOf((*MockUsersModel)(nil).FindAll), ctx)
+	return &MockUsersModelFindAllCall{Call: call}
+}
+
+// MockUsersModelFindAllCall wrap *gomock.Call
+type MockUsersModelFindAllCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUsersModelFindAllCall) Return(arg0 []*Users, arg1 error) *MockUsersModelFindAllCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUsersModelFindAllCall) Do(f func(context.Context) ([]*Users, error)) *MockUsersModelFindAllCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUsersModelFindAllCall) DoAndReturn(f func(context.Context) ([]*Users, error)) *MockUsersModelFindAllCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // FindOne mocks base method.
 func (m *MockUsersModel) FindOne(ctx context.Context, id string) (*Users, error) {
 	m.ctrl.T.Helper()

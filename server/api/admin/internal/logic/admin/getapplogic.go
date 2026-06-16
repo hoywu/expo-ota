@@ -27,7 +27,10 @@ func NewGetAppLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetAppLogi
 }
 
 func (l *GetAppLogic) GetApp(req *types.AppSlugPath) (resp *types.AppResp, err error) {
-	// todo: add your logic here and delete this line
+	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	return appToResp(app), nil
 }

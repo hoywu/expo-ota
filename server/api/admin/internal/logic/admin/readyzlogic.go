@@ -5,7 +5,9 @@ package admin
 
 import (
 	"context"
+	"net/http"
 
+	"github.com/hoywu/expo-ota/server/api/admin/internal/httperr"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
 
@@ -27,7 +29,11 @@ func NewReadyzLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ReadyzLogi
 }
 
 func (l *ReadyzLogic) Readyz() (resp *types.ReadyResp, err error) {
-	// todo: add your logic here and delete this line
+	var one int
+	if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &one, "select 1"); err != nil {
+		l.Errorf("readyz db ping failed: %v", err)
+		return nil, httperr.New(http.StatusServiceUnavailable, "database unavailable")
+	}
 
-	return
+	return &types.ReadyResp{Status: "ok", Db: "ok"}, nil
 }

@@ -27,7 +27,29 @@ func NewListApiTokensLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Lis
 }
 
 func (l *ListApiTokensLogic) ListApiTokens(req *types.AppSlugPath) (resp *types.ListTokensResp, err error) {
-	// todo: add your logic here and delete this line
+	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	tokens, err := l.svcCtx.ApiTokensModel.FindAllByAppId(l.ctx, app.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]types.TokenItem, 0, len(tokens))
+	for _, token := range tokens {
+		items = append(items, types.TokenItem{
+			Id:         token.Id,
+			Name:       token.Name,
+			CreatedBy:  token.CreatedBy,
+			Scopes:     token.Scopes,
+			LastUsedAt: formatNullTime(token.LastUsedAt),
+			ExpiresAt:  formatNullTime(token.ExpiresAt),
+			CreatedAt:  formatTime(token.CreatedAt),
+			RevokedAt:  formatNullTime(token.RevokedAt),
+		})
+	}
+
+	return &types.ListTokensResp{Items: items}, nil
 }

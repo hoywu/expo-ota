@@ -33,6 +33,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 	user, err := l.svcCtx.UsersModel.FindOneByUsername(l.ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			writeAudit(l.ctx, l.svcCtx, "login_failed", "", "user", "", map[string]any{"username": req.Username})
 			return nil, errInvalidCredentials
 		}
 		return nil, err
@@ -43,6 +44,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
+		writeAudit(l.ctx, l.svcCtx, "login_failed", "", "user", user.Id, map[string]any{"username": req.Username})
 		return nil, errInvalidCredentials
 	}
 

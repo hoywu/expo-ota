@@ -14,4 +14,17 @@ type Config struct {
 	}
 	RefreshSecret string
 	RefreshExpire int64
+	Cos           struct {
+		SecretID  string
+		SecretKey string
+		Region    string
+		Bucket    string
+		Domain    string `json:",optional"` // optional custom COS domain
+		KeyPrefix string `json:",optional"` // optional COS object key prefix
+	}
+	// SigningKeyEncryptionKey is the base64-encoded 32-byte AES-256-GCM key
+	// used to encrypt code signing private keys at rest (§5.5).
+	SigningKeyEncryptionKey string
+	// PresignExpireSeconds is the validity window of COS pre-signed PUT URLs.
+	PresignExpireSeconds int64 `json:",default=900"`
 }

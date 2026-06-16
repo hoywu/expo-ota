@@ -1,6 +1,11 @@
 package models
 
-import "github.com/zeromicro/go-zero/core/stores/sqlx"
+import (
+	"context"
+	"fmt"
+
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
 
 var _ UsersModel = (*customUsersModel)(nil)
 
@@ -10,6 +15,8 @@ type (
 	UsersModel interface {
 		usersModel
 		withSession(session sqlx.Session) UsersModel
+		// FindAll returns all users ordered by creation time.
+		FindAll(ctx context.Context) ([]*Users, error)
 	}
 
 	customUsersModel struct {
@@ -26,4 +33,11 @@ func NewUsersModel(conn sqlx.SqlConn) UsersModel {
 
 func (m *customUsersModel) withSession(session sqlx.Session) UsersModel {
 	return NewUsersModel(sqlx.NewSqlConnFromSession(session))
+}
+
+func (m *customUsersModel) FindAll(ctx context.Context) ([]*Users, error) {
+	query := fmt.Sprintf("select %s from %s order by created_at", usersRows, m.table)
+	var resp []*Users
+	err := m.conn.QueryRowsCtx(ctx, &resp, query)
+	return resp, err
 }

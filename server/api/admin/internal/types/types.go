@@ -109,10 +109,11 @@ type HealthResp struct {
 }
 
 type ImportSigningKeyReq struct {
-	AppSlug      string `path:"appSlug"`
-	KeyId        string `json:"keyId"`
-	Algorithm    string `json:"algorithm,default=rsa-v1_5-sha256,optional"`
-	PublicKeyPem string `json:"publicKeyPem"`
+	AppSlug       string `path:"appSlug"`
+	KeyId         string `json:"keyId"`
+	Algorithm     string `json:"algorithm,default=rsa-v1_5-sha256,optional"`
+	PublicKeyPem  string `json:"publicKeyPem"`
+	PrivateKeyPem string `json:"privateKeyPem,optional"`
 }
 
 type ListAppsResp struct {

@@ -53,6 +53,7 @@ type (
 		ManifestSnapshot string         `db:"manifest_snapshot"`
 		RolledBackFrom   sql.NullString `db:"rolled_back_from"`
 		CreatedAt        time.Time      `db:"created_at"`
+		PublishedAt      sql.NullTime   `db:"published_at"`
 		DeletedAt        sql.NullTime   `db:"deleted_at"`
 	}
 )
@@ -99,14 +100,14 @@ func (m *defaultUpdatesModel) FindOneByAppIdManifestUuid(ctx context.Context, ap
 }
 
 func (m *defaultUpdatesModel) Insert(ctx context.Context, data *Updates) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)", m.table, updatesRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.Id, data.AppId, data.RuntimeVersionId, data.Platform, data.ManifestUuid, data.LaunchAssetId, data.Status, data.Message, data.GitCommitHash, data.ManifestMetadata, data.Extra, data.ExpoConfig, data.ManifestSnapshot, data.RolledBackFrom, data.DeletedAt)
+	query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)", m.table, updatesRowsExpectAutoSet)
+	ret, err := m.conn.ExecCtx(ctx, query, data.Id, data.AppId, data.RuntimeVersionId, data.Platform, data.ManifestUuid, data.LaunchAssetId, data.Status, data.Message, data.GitCommitHash, data.ManifestMetadata, data.Extra, data.ExpoConfig, data.ManifestSnapshot, data.RolledBackFrom, data.PublishedAt, data.DeletedAt)
 	return ret, err
 }
 
 func (m *defaultUpdatesModel) Update(ctx context.Context, newData *Updates) error {
 	query := fmt.Sprintf("update %s set %s where id = $1", m.table, updatesRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, newData.Id, newData.AppId, newData.RuntimeVersionId, newData.Platform, newData.ManifestUuid, newData.LaunchAssetId, newData.Status, newData.Message, newData.GitCommitHash, newData.ManifestMetadata, newData.Extra, newData.ExpoConfig, newData.ManifestSnapshot, newData.RolledBackFrom, newData.DeletedAt)
+	_, err := m.conn.ExecCtx(ctx, query, newData.Id, newData.AppId, newData.RuntimeVersionId, newData.Platform, newData.ManifestUuid, newData.LaunchAssetId, newData.Status, newData.Message, newData.GitCommitHash, newData.ManifestMetadata, newData.Extra, newData.ExpoConfig, newData.ManifestSnapshot, newData.RolledBackFrom, newData.PublishedAt, newData.DeletedAt)
 	return err
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/hoywu/expo-ota/server/api/admin/internal/config"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/handler"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/httperr"
+	"github.com/hoywu/expo-ota/server/api/admin/internal/reqmeta"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
@@ -28,6 +29,7 @@ func main() {
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
+	server.Use(reqmeta.Middleware)
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)

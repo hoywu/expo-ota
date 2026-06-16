@@ -5,9 +5,11 @@ package admin
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
+	"github.com/hoywu/expo-ota/server/db/models"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,7 +29,18 @@ func NewGetSigningKeyLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Get
 }
 
 func (l *GetSigningKeyLogic) GetSigningKey(req *types.AppSlugPath) (resp *types.SigningKeyResp, err error) {
-	// todo: add your logic here and delete this line
+	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	key, err := l.svcCtx.CodeSigningKeysModel.FindOneByAppId(l.ctx, app.Id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, errSigningKeyNotFound
+		}
+		return nil, err
+	}
+
+	return signingKeyToResp(key), nil
 }

@@ -1,6 +1,11 @@
 package models
 
-import "github.com/zeromicro/go-zero/core/stores/sqlx"
+import (
+	"context"
+	"fmt"
+
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
 
 var _ UpdateAssetsModel = (*customUpdateAssetsModel)(nil)
 
@@ -10,6 +15,8 @@ type (
 	UpdateAssetsModel interface {
 		updateAssetsModel
 		withSession(session sqlx.Session) UpdateAssetsModel
+		// FindAllByUpdateId returns the asset rows of an update in sort order.
+		FindAllByUpdateId(ctx context.Context, updateId string) ([]*UpdateAssets, error)
 	}
 
 	customUpdateAssetsModel struct {
@@ -26,4 +33,11 @@ func NewUpdateAssetsModel(conn sqlx.SqlConn) UpdateAssetsModel {
 
 func (m *customUpdateAssetsModel) withSession(session sqlx.Session) UpdateAssetsModel {
 	return NewUpdateAssetsModel(sqlx.NewSqlConnFromSession(session))
+}
+
+func (m *customUpdateAssetsModel) FindAllByUpdateId(ctx context.Context, updateId string) ([]*UpdateAssets, error) {
+	query := fmt.Sprintf("select %s from %s where update_id = $1 order by sort_order", updateAssetsRows, m.table)
+	var resp []*UpdateAssets
+	err := m.conn.QueryRowsCtx(ctx, &resp, query, updateId)
+	return resp, err
 }

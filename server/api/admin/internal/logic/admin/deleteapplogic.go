@@ -27,7 +27,19 @@ func NewDeleteAppLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DeleteA
 }
 
 func (l *DeleteAppLogic) DeleteApp(req *types.AppSlugPath) (resp *types.EmptyResp, err error) {
-	// todo: add your logic here and delete this line
+	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	app.DeletedAt = nullableNow()
+	if err := l.svcCtx.AppsModel.Update(l.ctx, app); err != nil {
+		return nil, err
+	}
+
+	writeAudit(l.ctx, l.svcCtx, "delete_app", app.Id, "app", app.Id, map[string]any{
+		"appSlug": app.AppSlug,
+	})
+
+	return &types.EmptyResp{}, nil
 }

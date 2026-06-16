@@ -27,7 +27,27 @@ func NewUpdateAppLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UpdateA
 }
 
 func (l *UpdateAppLogic) UpdateApp(req *types.UpdateAppReq) (resp *types.AppResp, err error) {
-	// todo: add your logic here and delete this line
+	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	// appSlug is immutable (§2.1); only name/description may change.
+	if req.Name != "" {
+		app.Name = req.Name
+	}
+	if req.Description != "" {
+		app.Description = nullString(req.Description)
+	}
+
+	if err := l.svcCtx.AppsModel.Update(l.ctx, app); err != nil {
+		return nil, err
+	}
+
+	writeAudit(l.ctx, l.svcCtx, "update_app", app.Id, "app", app.Id, map[string]any{
+		"name":        app.Name,
+		"description": app.Description.String,
+	})
+
+	return appToResp(app), nil
 }

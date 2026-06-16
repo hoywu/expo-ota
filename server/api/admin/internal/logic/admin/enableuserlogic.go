@@ -5,9 +5,12 @@ package admin
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
+	"github.com/hoywu/expo-ota/server/db/models"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,7 +30,22 @@ func NewEnableUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Enable
 }
 
 func (l *EnableUserLogic) EnableUser(req *types.UserIdPath) (resp *types.ActionResp, err error) {
-	// todo: add your logic here and delete this line
+	user, err := l.svcCtx.UsersModel.FindOne(l.ctx, req.UserId)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, errUserNotFound
+		}
+		return nil, err
+	}
 
-	return
+	if user.DisabledAt.Valid {
+		user.DisabledAt = sql.NullTime{}
+		if err := l.svcCtx.UsersModel.Update(l.ctx, user); err != nil {
+			return nil, err
+		}
+	}
+
+	writeAudit(l.ctx, l.svcCtx, "enable_user", "", "user", user.Id, nil)
+
+	return &types.ActionResp{UserId: user.Id}, nil
 }

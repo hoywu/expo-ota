@@ -1,9 +1,18 @@
 Name: admin-api
 Host: 0.0.0.0
 Port: 8081
-DataSource: $(DB_URL)
+DataSource: ${DB_URL}
 Auth:
-  AccessSecret: $(AUTH_ACCESS_SECRET)
+  AccessSecret: ${AUTH_ACCESS_SECRET}
   AccessExpire: 86400 # Access Token 有效期 24 小时
-RefreshSecret: $(AUTH_REFRESH_SECRET)
+RefreshSecret: ${AUTH_REFRESH_SECRET}
 RefreshExpire: 604800 # Refresh Token 有效期 7 天
+Cos:
+  SecretID: ${COS_SECRET_ID}
+  SecretKey: ${COS_SECRET_KEY}
+  Region: ${COS_REGION}
+  Bucket: ${COS_BUCKET}
+  Domain: ${COS_DOMAIN}
+  KeyPrefix: ${COS_KEY_PREFIX}
+SigningKeyEncryptionKey: ${SIGNING_KEY_ENCRYPTION_KEY}
+PresignExpireSeconds: 900 # COS pre-signed PUT URL 有效期 15 分钟

@@ -54,7 +54,7 @@ CREATE TABLE assets (
     size_bytes    bigint NOT NULL CHECK (size_bytes >= 0),
     content_type  text NOT NULL,
     file_ext      text,
-    storage_key   text NOT NULL,                       -- apps/{slug}/assets/{sha256_b64url}
+    storage_key   text NOT NULL,                       -- [prefix/]apps/{slug}/assets/{sha256_b64url}
     created_at    timestamptz NOT NULL DEFAULT now(),
     UNIQUE (app_id, sha256)
 );

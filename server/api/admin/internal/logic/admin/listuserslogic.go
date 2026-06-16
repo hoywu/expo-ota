@@ -27,7 +27,15 @@ func NewListUsersLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListUse
 }
 
 func (l *ListUsersLogic) ListUsers() (resp *types.ListUsersResp, err error) {
-	// todo: add your logic here and delete this line
+	users, err := l.svcCtx.UsersModel.FindAll(l.ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	items := make([]types.UserItem, 0, len(users))
+	for _, user := range users {
+		items = append(items, userToItem(user))
+	}
+
+	return &types.ListUsersResp{Items: items}, nil
 }
