@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -27,6 +28,10 @@ type (
 		// StatsByUpdate aggregates success/failure devices and durations of
 		// the given update.
 		StatsByUpdate(ctx context.Context, appId, updateId string) (*ClientEventUpdateStats, error)
+		// InsertIgnoreConflict inserts a client event, deduplicating on
+		// (app_id, event_id) so client retries do not double-count. It
+		// reports whether a new row was actually inserted (§5.6 idempotency).
+		InsertIgnoreConflict(ctx context.Context, data *ClientEvents) (inserted bool, err error)
 	}
 
 	customClientEventsModel struct {
@@ -43,6 +48,24 @@ func NewClientEventsModel(conn sqlx.SqlConn) ClientEventsModel {
 
 func (m *customClientEventsModel) withSession(session sqlx.Session) ClientEventsModel {
 	return NewClientEventsModel(sqlx.NewSqlConnFromSession(session))
+}
+
+func (m *customClientEventsModel) InsertIgnoreConflict(ctx context.Context, data *ClientEvents) (bool, error) {
+	query := fmt.Sprintf(
+		"insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) on conflict (app_id, event_id) do nothing",
+		m.table, clientEventsRowsExpectAutoSet)
+	ret, err := m.conn.ExecCtx(ctx, query,
+		data.AppId, data.OccurredAt, data.ReceivedAt, data.EventId, data.EventType,
+		data.UpdateId, data.ManifestUuid, data.RuntimeVersion, data.Platform, data.DeviceId,
+		data.AppVersion, data.OsVersion, data.DurationMs, data.ErrorCode, data.ErrorMessage)
+	if err != nil {
+		return false, err
+	}
+	affected, err := ret.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
 }
 
 func (m *customClientEventsModel) StatsByUpdate(ctx context.Context, appId, updateId string) (*ClientEventUpdateStats, error) {

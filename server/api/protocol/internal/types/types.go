@@ -3,10 +3,48 @@
 
 package types
 
-type Request struct {
-	Name string `path:"name,options=you|me"`
+type EmptyResp struct {
 }
 
-type Response struct {
+type ErrorResp struct {
+	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+type ManifestReq struct {
+	AppSlug          string `path:"appSlug"`
+	ProtocolVersion  string `header:"expo-protocol-version,optional"`
+	Platform         string `header:"expo-platform,optional"`
+	RuntimeVersion   string `header:"expo-runtime-version,optional"`
+	CurrentUpdateId  string `header:"expo-current-update-id,optional"`
+	EmbeddedUpdateId string `header:"expo-embedded-update-id,optional"`
+	ExpectSignature  string `header:"expo-expect-signature,optional"`
+	DeviceId         string `header:"expo-device-id,optional"`
+	Accept           string `header:"Accept,optional"`
+}
+
+type EventReq struct {
+	AppSlug        string `path:"appSlug"`
+	EventId        string `json:"eventId"`
+	EventType      string `json:"eventType,options=update_succeeded|update_failed"`
+	OccurredAt     string `json:"occurredAt"`
+	UpdateId       string `json:"updateId,optional"`
+	ManifestUuid   string `json:"manifestUuid,optional"`
+	RuntimeVersion string `json:"runtimeVersion,optional"`
+	Platform       string `json:"platform,optional"`
+	DeviceId       string `json:"deviceId"`
+	AppVersion     string `json:"appVersion,optional"`
+	OsVersion      string `json:"osVersion,optional"`
+	DurationMs     int64  `json:"durationMs,optional"`
+	ErrorCode      string `json:"errorCode,optional"`
+	ErrorMessage   string `json:"errorMessage,optional"`
+}
+
+type HealthResp struct {
+	Status string `json:"status"`
+}
+
+type ReadyResp struct {
+	Status string `json:"status"`
+	Db     string `json:"db"`
 }

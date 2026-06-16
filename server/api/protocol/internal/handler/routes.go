@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	protocol "github.com/hoywu/expo-ota/server/api/protocol/internal/handler/protocol"
 	"github.com/hoywu/expo-ota/server/api/protocol/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -16,8 +17,29 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				Method:  http.MethodGet,
-				Path:    "/from/:name",
-				Handler: ProtocolHandler(serverCtx),
+				Path:    "/:appSlug/manifest",
+				Handler: protocol.ManifestHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/:appSlug/events",
+				Handler: protocol.EventsHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/apps"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodGet,
+				Path:    "/healthz",
+				Handler: protocol.HealthzHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/readyz",
+				Handler: protocol.ReadyzHandler(serverCtx),
 			},
 		},
 	)

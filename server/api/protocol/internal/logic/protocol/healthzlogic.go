@@ -1,7 +1,7 @@
 // Code scaffolded by goctl. Safe to edit.
 // goctl 1.10.1
 
-package logic
+package protocol
 
 import (
 	"context"
@@ -12,22 +12,20 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type ProtocolLogic struct {
+type HealthzLogic struct {
 	logx.Logger
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 }
 
-func NewProtocolLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ProtocolLogic {
-	return &ProtocolLogic{
+func NewHealthzLogic(ctx context.Context, svcCtx *svc.ServiceContext) *HealthzLogic {
+	return &HealthzLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
 		svcCtx: svcCtx,
 	}
 }
 
-func (l *ProtocolLogic) Protocol(req *types.Request) (resp *types.Response, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+func (l *HealthzLogic) Healthz() (resp *types.HealthResp, err error) {
+	return &types.HealthResp{Status: "ok"}, nil
 }

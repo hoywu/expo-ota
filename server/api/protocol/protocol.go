@@ -9,10 +9,12 @@ import (
 
 	"github.com/hoywu/expo-ota/server/api/protocol/internal/config"
 	"github.com/hoywu/expo-ota/server/api/protocol/internal/handler"
+	"github.com/hoywu/expo-ota/server/api/protocol/internal/httperr"
 	"github.com/hoywu/expo-ota/server/api/protocol/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
+	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
 var configFile = flag.String("f", "etc/protocol-api.yaml", "the config file")
@@ -22,6 +24,7 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c, conf.UseEnv())
+	httpx.SetErrorHandlerCtx(httperr.ToErrorResponse)
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

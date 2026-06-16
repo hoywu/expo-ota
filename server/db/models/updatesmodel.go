@@ -27,6 +27,11 @@ type (
 		withSession(session sqlx.Session) UpdatesModel
 		// FindManyByAppId lists non-deleted updates of an app, newest first.
 		FindManyByAppId(ctx context.Context, appId string, filter UpdatesFilter) ([]*Updates, error)
+		// FindLatestPublished returns the current update of a
+		// (app, runtime_version, platform) stream: the newest published,
+		// non-deleted update by published_at DESC. Returns ErrNotFound when
+		// the stream has no published update.
+		FindLatestPublished(ctx context.Context, appId, runtimeVersionId, platform string) (*Updates, error)
 		// InsertWithAssets inserts an update row and its update_assets rows
 		// in a single transaction.
 		InsertWithAssets(ctx context.Context, data *Updates, assetRows []*UpdateAssets) error
@@ -92,6 +97,23 @@ func (m *customUpdatesModel) FindManyByAppId(ctx context.Context, appId string, 
 	var resp []*Updates
 	err := m.conn.QueryRowsCtx(ctx, &resp, query, args...)
 	return resp, err
+}
+
+func (m *customUpdatesModel) FindLatestPublished(ctx context.Context, appId, runtimeVersionId, platform string) (*Updates, error) {
+	query := fmt.Sprintf(`select %s from %s
+		where app_id = $1 and runtime_version_id = $2 and platform = $3
+		  and status = 'published' and deleted_at is null
+		order by published_at desc limit 1`, updatesRows, m.table)
+	var resp Updates
+	err := m.conn.QueryRowCtx(ctx, &resp, query, appId, runtimeVersionId, platform)
+	switch err {
+	case nil:
+		return &resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
 }
 
 func (m *customUpdatesModel) InsertWithAssets(ctx context.Context, data *Updates, assetRows []*UpdateAssets) error {

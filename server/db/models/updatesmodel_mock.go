@@ -80,6 +80,45 @@ func (c *MockUpdatesModelDeleteCall) DoAndReturn(f func(context.Context, string)
 	return c
 }
 
+// FindLatestPublished mocks base method.
+func (m *MockUpdatesModel) FindLatestPublished(ctx context.Context, appId, runtimeVersionId, platform string) (*Updates, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindLatestPublished", ctx, appId, runtimeVersionId, platform)
+	ret0, _ := ret[0].(*Updates)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindLatestPublished indicates an expected call of FindLatestPublished.
+func (mr *MockUpdatesModelMockRecorder) FindLatestPublished(ctx, appId, runtimeVersionId, platform any) *MockUpdatesModelFindLatestPublishedCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatestPublished", reflect.TypeOf((*MockUpdatesModel)(nil).FindLatestPublished), ctx, appId, runtimeVersionId, platform)
+	return &MockUpdatesModelFindLatestPublishedCall{Call: call}
+}
+
+// MockUpdatesModelFindLatestPublishedCall wrap *gomock.Call
+type MockUpdatesModelFindLatestPublishedCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUpdatesModelFindLatestPublishedCall) Return(arg0 *Updates, arg1 error) *MockUpdatesModelFindLatestPublishedCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUpdatesModelFindLatestPublishedCall) Do(f func(context.Context, string, string, string) (*Updates, error)) *MockUpdatesModelFindLatestPublishedCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUpdatesModelFindLatestPublishedCall) DoAndReturn(f func(context.Context, string, string, string) (*Updates, error)) *MockUpdatesModelFindLatestPublishedCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // FindManyByAppId mocks base method.
 func (m *MockUpdatesModel) FindManyByAppId(ctx context.Context, appId string, filter UpdatesFilter) ([]*Updates, error) {
 	m.ctrl.T.Helper()

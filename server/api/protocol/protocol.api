@@ -1,15 +1,103 @@
 syntax = "v1"
 
-type Request {
-	Name string `path:"name,options=you|me"`
-}
+// =====================================================================
+// Expo Updates v1 协议端点（公网，无鉴权，靠 Nginx 限速，见 §5 / §11.3）。
+//
+// manifest 端点的响应是协议自定义的（multipart/mixed 或 application/expo+json
+// 或 204/406 + expo-* 响应头 + 可选 expo-signature），无法用 go-zero 默认的
+// httpx.OkJson 渲染，因此 ManifestHandler 为手写 handler，直接写 ResponseWriter。
+// 这里仍保留 .api 定义用于路由与请求类型生成。
+// =====================================================================
 
-type Response {
-	Message string `json:"message"`
-}
+type (
+	// EmptyResp 通用空响应。
+	EmptyResp  {}
+	// ErrorResp 与 go-zero 默认错误体兼容。
+	ErrorResp {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+)
 
+// =====================================================================
+// Manifest (§5.1)
+// 客户端请求头通过 header tag 注入，路径参数为 appSlug。
+// =====================================================================
+type (
+	ManifestReq {
+		AppSlug          string `path:"appSlug"`
+		ProtocolVersion  string `header:"expo-protocol-version,optional"`
+		Platform         string `header:"expo-platform,optional"`
+		RuntimeVersion   string `header:"expo-runtime-version,optional"`
+		CurrentUpdateId  string `header:"expo-current-update-id,optional"`
+		EmbeddedUpdateId string `header:"expo-embedded-update-id,optional"`
+		ExpectSignature  string `header:"expo-expect-signature,optional"`
+		DeviceId         string `header:"expo-device-id,optional"`
+		Accept           string `header:"Accept,optional"`
+	}
+)
+
+// =====================================================================
+// 客户端事件上报 (§5.6)
+// =====================================================================
+type (
+	EventReq {
+		AppSlug        string `path:"appSlug"`
+		EventId        string `json:"eventId"`
+		EventType      string `json:"eventType,options=update_succeeded|update_failed"`
+		OccurredAt     string `json:"occurredAt"`
+		UpdateId       string `json:"updateId,optional"`
+		ManifestUuid   string `json:"manifestUuid,optional"`
+		RuntimeVersion string `json:"runtimeVersion,optional"`
+		Platform       string `json:"platform,optional"`
+		DeviceId       string `json:"deviceId"`
+		AppVersion     string `json:"appVersion,optional"`
+		OsVersion      string `json:"osVersion,optional"`
+		DurationMs     int64  `json:"durationMs,optional"`
+		ErrorCode      string `json:"errorCode,optional"`
+		ErrorMessage   string `json:"errorMessage,optional"`
+	}
+)
+
+// =====================================================================
+// 健康检查 (§6.9)
+// =====================================================================
+type (
+	HealthResp {
+		Status string `json:"status"`
+	}
+	ReadyResp {
+		Status string `json:"status"`
+		Db     string `json:"db"`
+	}
+)
+
+// =====================================================================
+// Service: 公开协议端点
+// 路由前缀为 /api/apps（manifest / events），健康检查在根路径。
+// =====================================================================
+@server (
+	prefix: /api/apps
+	group:  protocol
+)
 service protocol-api {
-	@handler ProtocolHandler
-	get /from/:name (Request) returns (Response)
+	// —— Manifest (§5.1)，手写 handler 渲染自定义响应 ——
+	@handler Manifest
+	get /:appSlug/manifest (ManifestReq)
+
+	// —— 客户端事件上报 (§5.6) ——
+	@handler Events
+	post /:appSlug/events (EventReq) returns (EmptyResp)
 }
 
+@server (
+	group: protocol
+)
+service protocol-api {
+	// —— 健康检查 (§6.9) ——
+	@handler Healthz
+	get /healthz returns (HealthResp)
+
+	@handler Readyz
+	get /readyz returns (ReadyResp)
+}

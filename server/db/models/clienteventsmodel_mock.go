@@ -197,6 +197,45 @@ func (c *MockClientEventsModelInsertCall) DoAndReturn(f func(context.Context, *C
 	return c
 }
 
+// InsertIgnoreConflict mocks base method.
+func (m *MockClientEventsModel) InsertIgnoreConflict(ctx context.Context, data *ClientEvents) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertIgnoreConflict", ctx, data)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertIgnoreConflict indicates an expected call of InsertIgnoreConflict.
+func (mr *MockClientEventsModelMockRecorder) InsertIgnoreConflict(ctx, data any) *MockClientEventsModelInsertIgnoreConflictCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertIgnoreConflict", reflect.TypeOf((*MockClientEventsModel)(nil).InsertIgnoreConflict), ctx, data)
+	return &MockClientEventsModelInsertIgnoreConflictCall{Call: call}
+}
+
+// MockClientEventsModelInsertIgnoreConflictCall wrap *gomock.Call
+type MockClientEventsModelInsertIgnoreConflictCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockClientEventsModelInsertIgnoreConflictCall) Return(inserted bool, err error) *MockClientEventsModelInsertIgnoreConflictCall {
+	c.Call = c.Call.Return(inserted, err)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockClientEventsModelInsertIgnoreConflictCall) Do(f func(context.Context, *ClientEvents) (bool, error)) *MockClientEventsModelInsertIgnoreConflictCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockClientEventsModelInsertIgnoreConflictCall) DoAndReturn(f func(context.Context, *ClientEvents) (bool, error)) *MockClientEventsModelInsertIgnoreConflictCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // StatsByUpdate mocks base method.
 func (m *MockClientEventsModel) StatsByUpdate(ctx context.Context, appId, updateId string) (*ClientEventUpdateStats, error) {
 	m.ctrl.T.Helper()
