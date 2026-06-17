@@ -197,6 +197,45 @@ func (c *MockCodeSigningKeysModelFindOneByAppIdKeyIdCall) DoAndReturn(f func(con
 	return c
 }
 
+// ListByAppId mocks base method.
+func (m *MockCodeSigningKeysModel) ListByAppId(ctx context.Context, appId string) ([]*CodeSigningKeys, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByAppId", ctx, appId)
+	ret0, _ := ret[0].([]*CodeSigningKeys)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByAppId indicates an expected call of ListByAppId.
+func (mr *MockCodeSigningKeysModelMockRecorder) ListByAppId(ctx, appId any) *MockCodeSigningKeysModelListByAppIdCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByAppId", reflect.TypeOf((*MockCodeSigningKeysModel)(nil).ListByAppId), ctx, appId)
+	return &MockCodeSigningKeysModelListByAppIdCall{Call: call}
+}
+
+// MockCodeSigningKeysModelListByAppIdCall wrap *gomock.Call
+type MockCodeSigningKeysModelListByAppIdCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockCodeSigningKeysModelListByAppIdCall) Return(arg0 []*CodeSigningKeys, arg1 error) *MockCodeSigningKeysModelListByAppIdCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockCodeSigningKeysModelListByAppIdCall) Do(f func(context.Context, string) ([]*CodeSigningKeys, error)) *MockCodeSigningKeysModelListByAppIdCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockCodeSigningKeysModelListByAppIdCall) DoAndReturn(f func(context.Context, string) ([]*CodeSigningKeys, error)) *MockCodeSigningKeysModelListByAppIdCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Insert mocks base method.
 func (m *MockCodeSigningKeysModel) Insert(ctx context.Context, data *CodeSigningKeys) (sql.Result, error) {
 	m.ctrl.T.Helper()

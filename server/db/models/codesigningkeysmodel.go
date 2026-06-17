@@ -18,6 +18,8 @@ type (
 		// FindOneByAppId returns the app's signing key (MVP: at most one per
 		// app; the latest row wins). Returns ErrNotFound when absent.
 		FindOneByAppId(ctx context.Context, appId string) (*CodeSigningKeys, error)
+		// ListByAppId returns all signing keys for an app, newest first.
+		ListByAppId(ctx context.Context, appId string) ([]*CodeSigningKeys, error)
 	}
 
 	customCodeSigningKeysModel struct {
@@ -43,6 +45,20 @@ func (m *customCodeSigningKeysModel) FindOneByAppId(ctx context.Context, appId s
 	switch err {
 	case nil:
 		return &resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *customCodeSigningKeysModel) ListByAppId(ctx context.Context, appId string) ([]*CodeSigningKeys, error) {
+	query := fmt.Sprintf("select %s from %s where app_id = $1 order by created_at desc", codeSigningKeysRows, m.table)
+	var resp []*CodeSigningKeys
+	err := m.conn.QueryRowsCtx(ctx, &resp, query, appId)
+	switch err {
+	case nil:
+		return resp, nil
 	case sqlx.ErrNotFound:
 		return nil, ErrNotFound
 	default:

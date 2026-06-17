@@ -92,14 +92,29 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.GetSigningKeyHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/signing-keys",
+				Handler: admin.ListSigningKeysHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodPatch,
 				Path:    "/apps/:appSlug/signing-key",
+				Handler: admin.PatchSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/apps/:appSlug/signing-keys/:keyId",
 				Handler: admin.PatchSigningKeyHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodDelete,
 				Path:    "/apps/:appSlug/signing-key",
 				Handler: admin.DeleteSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/apps/:appSlug/signing-keys/:keyId",
+				Handler: admin.DeleteSigningKeyByIDHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPost,

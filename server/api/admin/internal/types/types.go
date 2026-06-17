@@ -177,6 +177,7 @@ type MeResp struct {
 
 type PatchSigningKeyReq struct {
 	AppSlug string `path:"appSlug"`
+	KeyId   string `path:"keyId,optional"`
 	Enabled bool   `json:"enabled"`
 }
 
@@ -256,6 +257,15 @@ type SigningKeyResp struct {
 	CreatedAt     string `json:"createdAt"`
 	DisabledAt    string `json:"disabledAt,optional"`
 	HasPrivateKey bool   `json:"hasPrivateKey"`
+}
+
+type ListSigningKeysResp struct {
+	Items []SigningKeyResp `json:"items"`
+}
+
+type SigningKeyIdPath struct {
+	AppSlug string `path:"appSlug"`
+	KeyId   string `path:"keyId"`
 }
 
 type TokenIdPath struct {

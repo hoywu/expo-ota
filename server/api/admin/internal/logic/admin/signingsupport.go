@@ -121,6 +121,22 @@ func ensureNoEnabledSigningKey(ctx context.Context, svcCtx *svc.ServiceContext, 
 	return nil
 }
 
+// recycleDisabledSigningKeyKeyID allows reusing an old key ID by removing
+// a disabled historical row with the same (app_id, key_id).
+func recycleDisabledSigningKeyKeyID(ctx context.Context, svcCtx *svc.ServiceContext, appId, keyId string) error {
+	existing, err := svcCtx.CodeSigningKeysModel.FindOneByAppIdKeyId(ctx, appId, keyId)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	if existing.Enabled {
+		return errSigningKeyExists
+	}
+	return svcCtx.CodeSigningKeysModel.Delete(ctx, existing.Id)
+}
+
 func signingKeyToResp(key *models.CodeSigningKeys) *types.SigningKeyResp {
 	return &types.SigningKeyResp{
 		KeyId:         key.KeyId,

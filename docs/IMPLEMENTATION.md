@@ -462,7 +462,7 @@ https://<cos-domain>/[prefix/]apps/{appSlug}/assets/{sha256_b64url}
 - 签名：客户端请求带 `expo-expect-signature` 时，RSA-SHA256 PKCS#1 v1.5 签 manifest/directive 实际发送字节
 - 算法：固定 `rsa-v1_5-sha256`
 - 每 App 仅允许一个 active key；旧 key 可 disable 保留，不做多 active key 并行轮换
-- 删除 key 前必须先 disable 24h（保护在线客户端）
+- 删除 key 前必须先 disable（无额外冷却时间）；若需保守策略可在运维流程中人工等待
 
 签名实现要点：
 
@@ -591,13 +591,24 @@ API Token 是给 CLI/CI 发布使用的 App 级长期凭据，不等价于管理
 
 ### 6.6 Code Signing
 
-| Method | Path                                             | 说明                                    |
-| ------ | ------------------------------------------------ | --------------------------------------- |
-| GET    | `/api/admin/apps/{appSlug}/signing-key`          | 详情（含公钥）                          |
-| POST   | `/api/admin/apps/{appSlug}/signing-key/generate` | 服务端生成 keypair                      |
-| POST   | `/api/admin/apps/{appSlug}/signing-key/import`   | 导入完整 keypair（公钥 + 加密后的私钥） |
-| PATCH  | `/api/admin/apps/{appSlug}/signing-key`          | `{enabled: true/false}`                 |
-| DELETE | `/api/admin/apps/{appSlug}/signing-key`          | 真删（必须先 disable 24h）              |
+| Method | Path                                                        | 说明                                    |
+| ------ | ----------------------------------------------------------- | --------------------------------------- |
+| GET    | `/api/admin/apps/{appSlug}/signing-keys`                    | 列表（含 enabled/disabled 历史 key）    |
+| GET    | `/api/admin/apps/{appSlug}/signing-key`                     | 最新一条详情（含公钥；兼容旧客户端）    |
+| POST   | `/api/admin/apps/{appSlug}/signing-key/generate`            | 服务端生成 keypair                      |
+| POST   | `/api/admin/apps/{appSlug}/signing-key/import`              | 导入完整 keypair（公钥 + 加密后的私钥） |
+| PATCH  | `/api/admin/apps/{appSlug}/signing-key`                     | 最新一条 `{enabled: true/false}`        |
+| PATCH  | `/api/admin/apps/{appSlug}/signing-keys/{keyId}`            | 指定 `keyId` 的 enable/disable          |
+| DELETE | `/api/admin/apps/{appSlug}/signing-key`                     | 真删最新一条（必须先 disable）          |
+| DELETE | `/api/admin/apps/{appSlug}/signing-keys/{keyId}`            | 真删指定 `keyId`（必须先 disable）      |
+
+`keyId` 复用规则（当前实现）：
+
+- 同一 App 内仅允许一个 enabled key
+- disabled 历史 key 保留在 DB，可通过 `GET .../signing-keys` 列出；Dashboard 对每行提供 Enable / Delete
+- 若 `keyId` 命中 disabled 历史 key，`generate/import` 时会先删除该历史记录，再写入新 key（允许复用 keyId）
+- 若命中 enabled key，则返回 409 冲突
+- `PATCH .../signing-keys/{keyId}` 启用时，若已有其他 enabled key，返回 409
 
 ### 6.7 用户
 

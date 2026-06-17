@@ -259,6 +259,13 @@ type (
 		DisabledAt    string `json:"disabledAt,optional"`
 		HasPrivateKey bool   `json:"hasPrivateKey"`
 	}
+	ListSigningKeysResp {
+		Items []SigningKeyResp `json:"items"`
+	}
+	SigningKeyIdPath {
+		AppSlug string `path:"appSlug"`
+		KeyId   string `path:"keyId"`
+	}
 	GenerateSigningKeyReq {
 		AppSlug string `path:"appSlug"`
 		KeyId   string `json:"keyId"`
@@ -272,6 +279,7 @@ type (
 	}
 	PatchSigningKeyReq {
 		AppSlug string `path:"appSlug"`
+		KeyId   string `path:"keyId,optional"`
 		Enabled bool   `json:"enabled"`
 	}
 )
@@ -449,6 +457,9 @@ service admin-api {
 	@handler GetSigningKey
 	get /apps/:appSlug/signing-key (AppSlugPath) returns (SigningKeyResp)
 
+	@handler ListSigningKeys
+	get /apps/:appSlug/signing-keys (AppSlugPath) returns (ListSigningKeysResp)
+
 	@handler GenerateSigningKey
 	post /apps/:appSlug/signing-key/generate (GenerateSigningKeyReq) returns (SigningKeyResp)
 
@@ -458,8 +469,14 @@ service admin-api {
 	@handler PatchSigningKey
 	patch /apps/:appSlug/signing-key (PatchSigningKeyReq) returns (SigningKeyResp)
 
+	@handler PatchSigningKey
+	patch /apps/:appSlug/signing-keys/:keyId (PatchSigningKeyReq) returns (SigningKeyResp)
+
 	@handler DeleteSigningKey
 	delete /apps/:appSlug/signing-key (AppSlugPath) returns (EmptyResp)
+
+	@handler DeleteSigningKeyByID
+	delete /apps/:appSlug/signing-keys/:keyId (SigningKeyIdPath) returns (EmptyResp)
 
 	// —— User (6.7) ——
 	@handler ListUsers

@@ -40,6 +40,9 @@ func (l *GenerateSigningKeyLogic) GenerateSigningKey(req *types.GenerateSigningK
 	if err := ensureNoEnabledSigningKey(l.ctx, l.svcCtx, app.Id); err != nil {
 		return nil, err
 	}
+	if err := recycleDisabledSigningKeyKeyID(l.ctx, l.svcCtx, app.Id, req.KeyId); err != nil {
+		return nil, err
+	}
 
 	publicPem, privatePem, err := generateRsaKeyPair()
 	if err != nil {

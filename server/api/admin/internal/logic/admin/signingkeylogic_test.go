@@ -9,7 +9,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
 	"github.com/hoywu/expo-ota/server/db/models"
@@ -22,6 +21,7 @@ func TestGenerateSigningKeyStoresEncryptedPrivateKey(t *testing.T) {
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
+	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(nil, models.ErrNotFound)
 	var inserted *models.CodeSigningKeys
 	m.CodeSigningKeys.EXPECT().Insert(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, key *models.CodeSigningKeys) (sql.Result, error) {
@@ -88,6 +88,7 @@ func TestImportSigningKeyRejectsMismatchedPair(t *testing.T) {
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
+	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(nil, models.ErrNotFound)
 
 	publicPem, _, err := generateRsaKeyPair()
 	if err != nil {
@@ -115,6 +116,7 @@ func TestImportSigningKeyPublicOnly(t *testing.T) {
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
+	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(nil, models.ErrNotFound)
 	var inserted *models.CodeSigningKeys
 	m.CodeSigningKeys.EXPECT().Insert(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, key *models.CodeSigningKeys) (sql.Result, error) {
@@ -152,10 +154,7 @@ func TestDeleteSigningKeyRequiresCooldown(t *testing.T) {
 		want error
 	}{
 		{"enabled", &models.CodeSigningKeys{Id: "k", Enabled: true}, errSigningKeyNotCooledDown},
-		{"recently disabled", &models.CodeSigningKeys{
-			Id: "k", Enabled: false,
-			DisabledAt: sql.NullTime{Time: time.Now().Add(-time.Hour), Valid: true},
-		}, errSigningKeyNotCooledDown},
+		{"not disabled", &models.CodeSigningKeys{Id: "k", Enabled: false}, errSigningKeyNotCooledDown},
 	}
 	for _, tc := range cases {
 		m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
@@ -174,7 +173,7 @@ func TestDeleteSigningKeyAfterCooldown(t *testing.T) {
 
 	key := &models.CodeSigningKeys{
 		Id: "key-1", Enabled: false,
-		DisabledAt: sql.NullTime{Time: time.Now().Add(-25 * time.Hour), Valid: true},
+		DisabledAt: sql.NullTime{Valid: true},
 	}
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(key, nil)
@@ -182,6 +181,45 @@ func TestDeleteSigningKeyAfterCooldown(t *testing.T) {
 
 	if _, err := NewDeleteSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).DeleteSigningKey(&types.AppSlugPath{AppSlug: "my-app"}); err != nil {
 		t.Fatalf("DeleteSigningKey returned error: %v", err)
+	}
+}
+
+func TestGenerateSigningKeyReusesDisabledKeyID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	oldKey := &models.CodeSigningKeys{
+		Id:         "old-key",
+		AppId:      "app-1",
+		KeyId:      "main",
+		Enabled:    false,
+		DisabledAt: sql.NullTime{Valid: true},
+	}
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(oldKey, nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(oldKey, nil)
+	m.CodeSigningKeys.EXPECT().Delete(gomock.Any(), "old-key").Return(nil)
+
+	var inserted *models.CodeSigningKeys
+	m.CodeSigningKeys.EXPECT().Insert(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, key *models.CodeSigningKeys) (sql.Result, error) {
+			inserted = key
+			return nil, nil
+		})
+	m.CodeSigningKeys.EXPECT().FindOne(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, id string) (*models.CodeSigningKeys, error) {
+			return inserted, nil
+		})
+
+	resp, err := NewGenerateSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).GenerateSigningKey(&types.GenerateSigningKeyReq{
+		AppSlug: "my-app", KeyId: "main",
+	})
+	if err != nil {
+		t.Fatalf("GenerateSigningKey returned error: %v", err)
+	}
+	if resp.KeyId != "main" || !resp.Enabled {
+		t.Errorf("resp = %+v", resp)
 	}
 }
 

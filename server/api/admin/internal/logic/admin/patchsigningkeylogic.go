@@ -35,7 +35,12 @@ func (l *PatchSigningKeyLogic) PatchSigningKey(req *types.PatchSigningKeyReq) (r
 		return nil, err
 	}
 
-	key, err := l.svcCtx.CodeSigningKeysModel.FindOneByAppId(l.ctx, app.Id)
+	var key *models.CodeSigningKeys
+	if req.KeyId != "" {
+		key, err = l.svcCtx.CodeSigningKeysModel.FindOneByAppIdKeyId(l.ctx, app.Id, req.KeyId)
+	} else {
+		key, err = l.svcCtx.CodeSigningKeysModel.FindOneByAppId(l.ctx, app.Id)
+	}
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, errSigningKeyNotFound
@@ -44,6 +49,18 @@ func (l *PatchSigningKeyLogic) PatchSigningKey(req *types.PatchSigningKeyReq) (r
 	}
 
 	if key.Enabled != req.Enabled {
+		if req.Enabled {
+			keys, err := l.svcCtx.CodeSigningKeysModel.ListByAppId(l.ctx, app.Id)
+			if err != nil && !errors.Is(err, models.ErrNotFound) {
+				return nil, err
+			}
+			for _, other := range keys {
+				if other.Id != key.Id && other.Enabled {
+					return nil, errSigningKeyExists
+				}
+			}
+		}
+
 		key.Enabled = req.Enabled
 		if req.Enabled {
 			key.DisabledAt = sql.NullTime{}

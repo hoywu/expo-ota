@@ -43,6 +43,9 @@ func (l *ImportSigningKeyLogic) ImportSigningKey(req *types.ImportSigningKeyReq)
 	if err := ensureNoEnabledSigningKey(l.ctx, l.svcCtx, app.Id); err != nil {
 		return nil, err
 	}
+	if err := recycleDisabledSigningKeyKeyID(l.ctx, l.svcCtx, app.Id, req.KeyId); err != nil {
+		return nil, err
+	}
 
 	publicKey, err := parseRsaPublicKey([]byte(req.PublicKeyPem))
 	if err != nil {
