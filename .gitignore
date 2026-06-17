@@ -44,3 +44,5 @@ go.work.sum
 .qoder/
 .qwen/
 .trae/
+
+node_modules

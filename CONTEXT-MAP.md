@@ -5,7 +5,7 @@
 ## Contexts
 
 - [Server](./server/CONTEXT.md) — Go-Zero 后端 + 协议实现 + 数据模型
-- Dashboard — 计划中（Vue 3 + Nuxt UI 客户端），尚未创建
+- [Dashboard](./dashboard/CONTEXT.md) — Vue 3 + Vite 管理端客户端
 
 ## Relationships
 

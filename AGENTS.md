@@ -21,7 +21,10 @@
 - 实现 server 的 API logic（`server/api/*/internal/logic/`）时，必须使用 `mockgen`（go.uber.org/mock）mock 依赖的 model 接口，编写必要的单元测试。
 - 修改已有 logic 时，同步更新对应的 `*_test.go`。
 - mock 生成在 `server/db/models/` 包内（接口含未导出方法，需 `-source` + `-self_package`），参考已有的 `usersmodel_mock.go` 头部命令。
-- 运行测试：`make test`。
+- 编写 dashboard 组件时，必须使用 `vitest` 编写必要的单元测试。
+- Dashboard 相关脚本（dev、build、test、lint 等）定义在 `dashboard/package.json`，不混入根目录 `Makefile`。
+- Dashboard 包管理使用 `bun` / `bunx`，禁止使用 `npm` / `npx`。
+- 运行测试：server 用 `make test`；dashboard 在 `dashboard/` 下执行 `bun run test:unit`（或对应 package script）。
 
 ---
 
@@ -37,4 +40,4 @@ Default vocabulary — the five role names are the literal label strings. See `d
 
 ### Domain docs
 
-Multi-context layout. A `CONTEXT-MAP.md` at the root indexes per-context `CONTEXT.md` files (e.g. `server/CONTEXT.md`, with `dashboard/CONTEXT.md` planned). System-wide ADRs live in `docs/adr/`. See `docs/agents/domain.md`.
+Multi-context layout. A `CONTEXT-MAP.md` at the root indexes per-context `CONTEXT.md` files (e.g. `server/CONTEXT.md`, `dashboard/CONTEXT.md`). System-wide ADRs live in `docs/adr/`. See `docs/agents/domain.md`.
