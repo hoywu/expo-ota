@@ -52,9 +52,31 @@ func computeManifestUuid(manifest map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return uuidFromCanonicalJSON(canonical), nil
+}
+
+// computeFinalizeManifestUuid keeps stateless finalize idempotent: retrying the
+// same manifest upload must derive the same UUID even though createdAt is set
+// from the first successful finalize time.
+func computeFinalizeManifestUuid(manifest map[string]any) (string, error) {
+	canonicalInput := make(map[string]any, len(manifest))
+	for k, v := range manifest {
+		if k == "createdAt" || k == "id" {
+			continue
+		}
+		canonicalInput[k] = v
+	}
+	canonical, err := json.Marshal(canonicalInput)
+	if err != nil {
+		return "", err
+	}
+	return uuidFromCanonicalJSON(canonical), nil
+}
+
+func uuidFromCanonicalJSON(canonical []byte) string {
 	sum := sha256.Sum256(canonical)
 	b := sum[:16]
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
 // decodeSha256B64url validates and decodes a base64url (unpadded) sha256.

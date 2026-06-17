@@ -25,6 +25,7 @@ var (
 	errBadProtocolVersion = httperr.New(http.StatusBadRequest, "expo-protocol-version must be 1")
 	errBadPlatform        = httperr.New(http.StatusBadRequest, "expo-platform must be ios or android")
 	errMissingRuntime     = httperr.New(http.StatusBadRequest, "expo-runtime-version is required")
+	errSigningUnavailable = httperr.New(http.StatusInternalServerError, "code signing key is unavailable")
 )
 
 type ManifestLogic struct {
@@ -88,7 +89,7 @@ func (l *ManifestLogic) Manifest(req *types.ManifestReq) (*ManifestResponse, err
 		return l.respondNoUpdateAvailable(app, req, mode), nil
 	}
 
-	// 8-9. Serve the manifest, signing it when an enabled key exists.
+	// 8-9. Serve the manifest, signing it when the client expects a signature.
 	return l.respondManifest(app, req, mode, update)
 }
 
@@ -97,7 +98,7 @@ func (l *ManifestLogic) Manifest(req *types.ManifestReq) (*ManifestResponse, err
 func (l *ManifestLogic) respondManifest(app *models.Apps, req *types.ManifestReq, mode acceptMode, update *models.Updates) (*ManifestResponse, error) {
 	manifestBody := []byte(update.ManifestSnapshot)
 
-	sigHeader, err := l.signIfEnabled(app.Id, manifestBody)
+	sigHeader, err := l.signIfExpected(app.Id, manifestBody, req.ExpectSignature)
 	if err != nil {
 		return nil, err
 	}
@@ -146,33 +147,41 @@ func (l *ManifestLogic) respondNoUpdate(app *models.Apps, req *types.ManifestReq
 	return l.response(app, req, "no_update", "", http.StatusNoContent, nil, "")
 }
 
-// signIfEnabled signs the manifest bytes when the app has an enabled signing
-// key with private-key material, returning the expo-signature header value
-// (empty when unsigned).
-func (l *ManifestLogic) signIfEnabled(appId string, manifestBytes []byte) (string, error) {
+// signIfExpected signs the manifest bytes only when the client sends
+// expo-expect-signature. When a signature is expected, missing or unusable key
+// material is a server misconfiguration and must not degrade to unsigned.
+func (l *ManifestLogic) signIfExpected(appId string, manifestBytes []byte, expectSignature string) (string, error) {
+	if expectSignature == "" {
+		return "", nil
+	}
+
 	key, err := l.svcCtx.CodeSigningKeysModel.FindOneByAppId(l.ctx, appId)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
-			return "", nil
+			l.Errorf("expo-expect-signature present but no signing key configured for app %s", appId)
+			return "", errSigningUnavailable
 		}
 		return "", err
 	}
 	if !key.Enabled || key.DisabledAt.Valid {
-		return "", nil
+		l.Errorf("expo-expect-signature present but signing key %s is disabled", key.KeyId)
+		return "", errSigningUnavailable
+	}
+	if key.Algorithm != signingKeyAlgorithm {
+		l.Errorf("expo-expect-signature present but signing key %s uses unsupported algorithm %s", key.KeyId, key.Algorithm)
+		return "", errSigningUnavailable
 	}
 
 	ciphertext := []byte(key.EncryptedPrivateKey)
 	plain, err := decryptPrivateKeyPem(l.svcCtx.SigningEncryptionKey, ciphertext)
 	if err != nil {
-		// Enabled key without usable private key (e.g. public-only import).
-		// Serve unsigned rather than failing the manifest.
 		l.Errorf("signing key %s enabled but private key unusable: %v", key.KeyId, err)
-		return "", nil
+		return "", errSigningUnavailable
 	}
 	priv, err := parseRsaPrivateKey(plain)
 	if err != nil {
 		l.Errorf("signing key %s private key parse failed: %v", key.KeyId, err)
-		return "", nil
+		return "", errSigningUnavailable
 	}
 	sig, err := signManifest(priv, manifestBytes)
 	if err != nil {

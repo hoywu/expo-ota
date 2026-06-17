@@ -24,6 +24,10 @@ import (
 var errNoLaunchAsset = httperr.New(http.StatusBadRequest,
 	"assets must contain exactly one launch asset (contentType application/javascript)")
 
+func errUpdateAlreadyFinalized(updateId string) error {
+	return httperr.New(http.StatusConflict, fmt.Sprintf("update already finalized: %s", updateId))
+}
+
 type FinalizeUploadLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -86,7 +90,7 @@ func (l *FinalizeUploadLogic) FinalizeUpload(req *types.FinalizeReq) (resp *type
 	}
 
 	manifest := buildManifest(req.RuntimeVersion, createdAt, launchAsset, manifestAssets, req.ManifestMetadata, req.ExpoConfig)
-	manifestUuid, err := computeManifestUuid(manifest)
+	manifestUuid, err := computeFinalizeManifestUuid(manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +98,12 @@ func (l *FinalizeUploadLogic) FinalizeUpload(req *types.FinalizeReq) (resp *type
 
 	snapshot, err := json.Marshal(manifest)
 	if err != nil {
+		return nil, err
+	}
+
+	if existing, err := l.svcCtx.UpdatesModel.FindOneByAppIdManifestUuid(l.ctx, app.Id, manifestUuid); err == nil {
+		return nil, errUpdateAlreadyFinalized(existing.Id)
+	} else if !errors.Is(err, models.ErrNotFound) {
 		return nil, err
 	}
 
@@ -136,6 +146,9 @@ func (l *FinalizeUploadLogic) FinalizeUpload(req *types.FinalizeReq) (resp *type
 	}
 
 	if err := l.svcCtx.UpdatesModel.InsertWithAssets(l.ctx, update, updateAssetRows); err != nil {
+		if existing, ferr := l.svcCtx.UpdatesModel.FindOneByAppIdManifestUuid(l.ctx, app.Id, manifestUuid); ferr == nil {
+			return nil, errUpdateAlreadyFinalized(existing.Id)
+		}
 		return nil, err
 	}
 

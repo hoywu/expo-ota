@@ -96,7 +96,6 @@ func TestManifestServesUpdateMultipart(t *testing.T) {
 	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
 	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
 		Return(&models.Updates{Id: "u-1", ManifestUuid: "11111111-1111-1111-1111-111111111111", ManifestSnapshot: testSnapshot}, nil)
-	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
 
 	res, err := NewManifestLogic(context.Background(), svcCtx).Manifest(baseManifestReq())
 	if err != nil {
@@ -123,7 +122,6 @@ func TestManifestServesUpdateJSON(t *testing.T) {
 	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
 	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
 		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
-	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
 
 	req := baseManifestReq()
 	req.Accept = mediaExpoJSON
@@ -153,7 +151,6 @@ func TestManifestServesPlainJSONContentType(t *testing.T) {
 	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
 	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
 		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
-	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
 
 	// A client that accepts only application/json must not receive a
 	// content type outside its Accept set (proactive negotiation, §5.1).
@@ -272,6 +269,7 @@ func TestManifestSignsWhenKeyEnabled(t *testing.T) {
 
 	req := baseManifestReq()
 	req.Accept = mediaExpoJSON
+	req.ExpectSignature = `sig, keyid="main", alg="rsa-v1_5-sha256"`
 	res, err := NewManifestLogic(context.Background(), svcCtx).Manifest(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -289,6 +287,63 @@ func TestManifestSignsWhenKeyEnabled(t *testing.T) {
 	digest := sha256.Sum256(res.Body)
 	if err := rsa.VerifyPKCS1v15(&priv.PublicKey, crypto.SHA256, digest[:], sig); err != nil {
 		t.Errorf("signature verification failed: %v", err)
+	}
+}
+
+func TestManifestDoesNotSignWithoutExpectSignature(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newTestSvcCtx(ctrl)
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
+	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
+		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
+
+	req := baseManifestReq()
+	req.Accept = mediaExpoJSON
+	res, err := NewManifestLogic(context.Background(), svcCtx).Manifest(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := res.Header.Get("expo-signature"); got != "" {
+		t.Fatalf("expo-signature = %q, want empty when request does not expect signature", got)
+	}
+}
+
+func TestManifestErrorsWhenExpectedSignatureKeyMissing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newTestSvcCtx(ctrl)
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
+	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
+		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
+
+	req := baseManifestReq()
+	req.ExpectSignature = `sig, keyid="main", alg="rsa-v1_5-sha256"`
+	_, err := NewManifestLogic(context.Background(), svcCtx).Manifest(req)
+	if !errors.Is(err, errSigningUnavailable) {
+		t.Fatalf("err = %v, want errSigningUnavailable", err)
+	}
+}
+
+func TestManifestErrorsWhenExpectedSignaturePrivateKeyMissing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newTestSvcCtx(ctrl)
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
+	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
+		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").
+		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: `\x`}, nil)
+
+	req := baseManifestReq()
+	req.ExpectSignature = `sig, keyid="main", alg="rsa-v1_5-sha256"`
+	_, err := NewManifestLogic(context.Background(), svcCtx).Manifest(req)
+	if !errors.Is(err, errSigningUnavailable) {
+		t.Fatalf("err = %v, want errSigningUnavailable", err)
 	}
 }
 

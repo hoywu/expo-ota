@@ -132,6 +132,8 @@ func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
 		DoAndReturn(func(_ context.Context, id string) (*models.RuntimeVersions, error) {
 			return &models.RuntimeVersions{Id: id, AppId: "app-1", Version: "1.0.0"}, nil
 		})
+	m.Updates.EXPECT().FindOneByAppIdManifestUuid(gomock.Any(), "app-1", gomock.Any()).
+		Return(nil, models.ErrNotFound)
 
 	var created *models.Updates
 	m.Updates.EXPECT().InsertWithAssets(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -183,6 +185,40 @@ func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
 	}
 	if resp.Status != "pending" || resp.UpdateId == "" || resp.ManifestUuid == "" {
 		t.Errorf("resp = %+v", resp)
+	}
+}
+
+func TestFinalizeUploadRejectsDuplicateManifestUuid(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	bundleSha, bundleRaw := shaB64url("bundle")
+	store := svcCtx.Store.(*fakeStore)
+	store.headSizes["apps/my-app/assets/"+bundleSha] = 100
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Assets.EXPECT().InsertIgnoreConflict(gomock.Any(), gomock.Any()).Return(nil)
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
+		Return(&models.Assets{
+			Id: "asset-bundle", AppId: "app-1", Sha256B64url: bundleSha,
+			SizeBytes: 100, ContentType: "application/javascript",
+			StorageKey: "apps/my-app/assets/" + bundleSha,
+		}, nil)
+	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").
+		Return(&models.RuntimeVersions{Id: "rv-1", AppId: "app-1", Version: "1.0.0"}, nil)
+	m.Updates.EXPECT().FindOneByAppIdManifestUuid(gomock.Any(), "app-1", gomock.Any()).
+		Return(&models.Updates{Id: "existing-update", AppId: "app-1", ManifestUuid: "manifest-1"}, nil)
+
+	_, err := NewFinalizeUploadLogic(ctxWithUserID("user-1"), svcCtx).FinalizeUpload(&types.FinalizeReq{
+		AppSlug:        "my-app",
+		RuntimeVersion: "1.0.0",
+		Platform:       "ios",
+		Assets: []types.PlanAssetItem{
+			{Key: "bundlekey", Sha256: bundleSha, Size: 100, ContentType: "application/javascript", FileExt: ".hbc"},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "existing-update") {
+		t.Fatalf("err = %v, want duplicate finalize conflict with existing id", err)
 	}
 }
 
