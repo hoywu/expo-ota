@@ -72,7 +72,11 @@ func (l *PlanUploadLogic) PlanUpload(req *types.PlanReq) (resp *types.PlanResp, 
 			return nil, err
 		}
 
-		putUrl, putHeaders, err := l.svcCtx.Store.PresignPut(l.ctx, storageKey, asset.ContentType, presignExpire)
+		contentMD5, err := md5HexToBase64(asset.Key)
+		if err != nil {
+			return nil, err
+		}
+		putUrl, putHeaders, err := l.svcCtx.Store.PresignPut(l.ctx, storageKey, asset.ContentType, contentMD5, presignExpire)
 		if err != nil {
 			return nil, err
 		}

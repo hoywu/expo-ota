@@ -2,9 +2,11 @@ package admin
 
 import (
 	"context"
+	"crypto/md5"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -19,12 +21,19 @@ func shaB64url(content string) (string, []byte) {
 	return base64.RawURLEncoding.EncodeToString(sum[:]), sum[:]
 }
 
+func md5Hex(content string) string {
+	sum := md5.Sum([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
+
 func TestPlanUploadSplitsMissingAndReuse(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newFullTestSvcCtx(ctrl)
 
 	bundleSha, bundleRaw := shaB64url("bundle")
 	imgSha, imgRaw := shaB64url("img")
+	bundleKey := md5Hex("bundle")
+	imgKey := md5Hex("img")
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
@@ -37,27 +46,61 @@ func TestPlanUploadSplitsMissingAndReuse(t *testing.T) {
 		RuntimeVersion: "1.0.0",
 		Platform:       "ios",
 		Assets: []types.PlanAssetItem{
-			{Key: "bundlekey", Sha256: bundleSha, Size: 100, ContentType: "application/javascript"},
-			{Key: "imgkey", Sha256: imgSha, Size: 50, ContentType: "image/png"},
+			{Key: bundleKey, Sha256: bundleSha, Size: 100, ContentType: "application/javascript"},
+			{Key: imgKey, Sha256: imgSha, Size: 50, ContentType: "image/png"},
 		},
 	})
 	if err != nil {
 		t.Fatalf("PlanUpload returned error: %v", err)
 	}
 
-	if len(resp.Missing) != 1 || resp.Missing[0].Key != "bundlekey" {
+	if len(resp.Missing) != 1 || resp.Missing[0].Key != bundleKey {
 		t.Errorf("Missing = %+v", resp.Missing)
 	}
 	wantFinal := "https://cos.example.com/apps/my-app/assets/" + bundleSha
 	if resp.Missing[0].FinalUrl != wantFinal {
 		t.Errorf("FinalUrl = %q, want %q", resp.Missing[0].FinalUrl, wantFinal)
 	}
-	if resp.Missing[0].PutUrl == "" || resp.Missing[0].PutHeaders["Content-Type"] != "application/javascript" {
+	wantMD5 := base64.StdEncoding.EncodeToString(mustDecodeHex(t, bundleKey))
+	if resp.Missing[0].PutUrl == "" ||
+		resp.Missing[0].PutHeaders["Content-Type"] != "application/javascript" ||
+		resp.Missing[0].PutHeaders["Content-MD5"] != wantMD5 {
 		t.Errorf("Missing[0] = %+v", resp.Missing[0])
 	}
-	if len(resp.Reuse) != 1 || resp.Reuse[0].Key != "imgkey" {
+	if len(resp.Reuse) != 1 || resp.Reuse[0].Key != imgKey {
 		t.Errorf("Reuse = %+v", resp.Reuse)
 	}
+}
+
+func TestPlanUploadRejectsBadMD5KeyForMissingAsset(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	bundleSha, bundleRaw := shaB64url("bundle")
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
+		Return(nil, models.ErrNotFound)
+
+	_, err := NewPlanUploadLogic(ctxWithUserID("user-1"), svcCtx).PlanUpload(&types.PlanReq{
+		AppSlug:        "my-app",
+		RuntimeVersion: "1.0.0",
+		Platform:       "ios",
+		Assets: []types.PlanAssetItem{
+			{Key: "not-md5", Sha256: bundleSha, Size: 100, ContentType: "application/javascript"},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "md5") {
+		t.Errorf("err = %v, want md5 validation error", err)
+	}
+}
+
+func mustDecodeHex(t *testing.T, s string) []byte {
+	t.Helper()
+	raw, err := hex.DecodeString(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }
 
 func TestPlanUploadRejectsBadSha256(t *testing.T) {

@@ -3,7 +3,9 @@ package storage
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"io"
 	"net/http"
@@ -35,6 +37,8 @@ func TestCosStoreUploadReadDeleteWithEnv(t *testing.T) {
 	randomText := randomHex(t, 16)
 	storageKey := AssetStorageKey("integration-test", time.Now().UTC().Format("20060102T150405Z")+"-"+randomText+".txt")
 	body := []byte("storage integration test\nrandom=" + randomText + "\n")
+	bodyMD5 := md5.Sum(body)
+	contentMD5 := base64.StdEncoding.EncodeToString(bodyMD5[:])
 
 	defer func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -44,7 +48,7 @@ func TestCosStoreUploadReadDeleteWithEnv(t *testing.T) {
 		}
 	}()
 
-	putURL, headers, err := store.PresignPut(ctx, storageKey, "text/plain; charset=utf-8", 5*time.Minute)
+	putURL, headers, err := store.PresignPut(ctx, storageKey, "text/plain; charset=utf-8", contentMD5, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("PresignPut() error = %v", err)
 	}

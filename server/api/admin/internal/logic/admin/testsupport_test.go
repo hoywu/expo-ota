@@ -83,8 +83,11 @@ func (f *fakeStore) PublicURL(storageKey string) string {
 	return "https://cos.example.com/" + storageKey
 }
 
-func (f *fakeStore) PresignPut(_ context.Context, storageKey, contentType string, _ time.Duration) (string, map[string]string, error) {
-	return "https://cos.example.com/put/" + storageKey, map[string]string{"Content-Type": contentType}, nil
+func (f *fakeStore) PresignPut(_ context.Context, storageKey, contentType, contentMD5 string, _ time.Duration) (string, map[string]string, error) {
+	return "https://cos.example.com/put/" + storageKey, map[string]string{
+		"Content-Type": contentType,
+		"Content-MD5":  contentMD5,
+	}, nil
 }
 
 func (f *fakeStore) Head(_ context.Context, storageKey string) (int64, error) {

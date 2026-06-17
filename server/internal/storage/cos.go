@@ -63,14 +63,22 @@ func (s *cosStore) PublicURL(storageKey string) string {
 	return s.publicURL.JoinPath(storageKey).String()
 }
 
-func (s *cosStore) PresignPut(ctx context.Context, storageKey, contentType string, expires time.Duration) (string, map[string]string, error) {
+func (s *cosStore) PresignPut(ctx context.Context, storageKey, contentType, contentMD5 string, expires time.Duration) (string, map[string]string, error) {
+	headers := http.Header{}
+	headers.Set("Content-Type", contentType)
+	headers.Set("Content-MD5", contentMD5)
+	opt := &cos.PresignedURLOptions{Header: &headers}
+
 	presigned, err := s.client.Object.GetPresignedURL(
-		ctx, http.MethodPut, storageKey, s.cfg.SecretID, s.cfg.SecretKey, expires, nil)
+		ctx, http.MethodPut, storageKey, s.cfg.SecretID, s.cfg.SecretKey, expires, opt)
 	if err != nil {
 		return "", nil, err
 	}
 
-	return presigned.String(), map[string]string{"Content-Type": contentType}, nil
+	return presigned.String(), map[string]string{
+		"Content-Type": contentType,
+		"Content-MD5":  contentMD5,
+	}, nil
 }
 
 func (s *cosStore) Head(ctx context.Context, storageKey string) (int64, error) {

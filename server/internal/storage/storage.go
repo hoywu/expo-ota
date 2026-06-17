@@ -17,7 +17,7 @@ type Store interface {
 	PublicURL(storageKey string) string
 	// PresignPut returns a pre-signed PUT URL (and headers the client must
 	// send) for direct upload of a missing asset.
-	PresignPut(ctx context.Context, storageKey, contentType string, expires time.Duration) (url string, headers map[string]string, err error)
+	PresignPut(ctx context.Context, storageKey, contentType, contentMD5 string, expires time.Duration) (url string, headers map[string]string, err error)
 	// Head returns the object size, or an error if the object is missing.
 	Head(ctx context.Context, storageKey string) (sizeBytes int64, err error)
 	// Delete removes the object at storageKey. Used by orphan asset GC

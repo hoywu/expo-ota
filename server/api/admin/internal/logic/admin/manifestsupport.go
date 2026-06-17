@@ -3,6 +3,7 @@ package admin
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 )
 
 var errInvalidSha256 = httperr.New(http.StatusBadRequest, "asset sha256 must be base64url of 32 bytes")
+var errInvalidAssetKey = httperr.New(http.StatusBadRequest, "asset key must be md5 hex of 16 bytes")
 
 // manifestAsset is one asset entry of a manifest (launchAsset or assets[]).
 type manifestAsset struct {
@@ -86,6 +88,16 @@ func decodeSha256B64url(s string) ([]byte, error) {
 		return nil, errInvalidSha256
 	}
 	return raw, nil
+}
+
+// md5HexToBase64 converts the manifest asset key (md5 hex) into the
+// Content-MD5 wire format COS validates on PUT: base64(raw md5 bytes).
+func md5HexToBase64(s string) (string, error) {
+	raw, err := hex.DecodeString(s)
+	if err != nil || len(raw) != 16 {
+		return "", errInvalidAssetKey
+	}
+	return base64.StdEncoding.EncodeToString(raw), nil
 }
 
 // assetToManifestAsset maps an assets row (+ its manifest key) to the

@@ -656,6 +656,7 @@ API Token 是给 CLI/CI 发布使用的 App 级长期凭据，不等价于管理
 2. 对每个 asset 查 `assets` 表：
    - 已存在 (app_id, sha256) → 加入 `reuse[]`
    - 不存在 → 生成 COS pre-signed PUT URL（15 min 过期），加入 `missing[]`
+   - pre-signed URL 会把 `Content-Type` 与 `Content-MD5` 签入；`Content-MD5` 由请求中的 `key`（md5 hex）转换为 base64(raw md5 bytes)
 3. 不写任何持久化状态
 
 **响应**：
@@ -669,7 +670,7 @@ API Token 是给 CLI/CI 发布使用的 App 级长期凭据，不等价于管理
       "size": 12345,
       "contentType": "image/png",
       "putUrl": "https://cos.example.com/...?sign=...",
-      "putHeaders": { "Content-MD5": "...", "x-cos-content-sha256": "..." },
+      "putHeaders": { "Content-Type": "image/png", "Content-MD5": "<base64 md5>" },
       "finalUrl": "https://cos.example.com/[prefix/]apps/{slug}/assets/4nGjshg..."
     }
   ],
@@ -699,8 +700,9 @@ await fetch(missing[i].putUrl, {
 
 **服务端处理**（一个 PostgreSQL 事务）：
 
-1. 对 plan/missing 中的每个 asset：
-   - HEAD COS 对象 → 必须存在 + Content-Length == size + 自算 sha256 一致
+1. 对请求中的每个 asset：
+   - HEAD COS 对象 → 必须存在 + Content-Length == size
+   - 文件内容完整性由 COS 在 PUT 阶段校验 `Content-MD5`；服务端不在 finalize 同步下载全量文件重算 sha256，避免把控制面变成数据面瓶颈
    - 失败 → 400，body 列出不一致的 key
 2. INSERT assets（ON CONFLICT DO NOTHING）
 3. 懒创建 runtime_versions 行（若不存在）
