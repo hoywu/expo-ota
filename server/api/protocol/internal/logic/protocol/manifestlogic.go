@@ -86,7 +86,7 @@ func (l *ManifestLogic) Manifest(req *types.ManifestReq) (*ManifestResponse, err
 
 	// 7. Client already runs the latest update -> noUpdateAvailable.
 	if req.CurrentUpdateId != "" && req.CurrentUpdateId == update.ManifestUuid {
-		return l.respondNoUpdateAvailable(app, req, mode), nil
+		return l.respondNoUpdateAvailable(app, req, mode)
 	}
 
 	// 8-9. Serve the manifest, signing it when the client expects a signature.
@@ -104,7 +104,7 @@ func (l *ManifestLogic) respondManifest(app *models.Apps, req *types.ManifestReq
 	}
 
 	if mode == acceptMultipart {
-		body, boundary, err := buildMultipart(manifestBody, sigHeader, nil)
+		body, boundary, err := buildMultipart(manifestBody, sigHeader, nil, "")
 		if err != nil {
 			return nil, err
 		}
@@ -117,18 +117,22 @@ func (l *ManifestLogic) respondManifest(app *models.Apps, req *types.ManifestReq
 }
 
 // respondNoUpdateAvailable serves the noUpdateAvailable directive (§5.2):
-// a directive part for multipart, or 204 for single-body clients.
-func (l *ManifestLogic) respondNoUpdateAvailable(app *models.Apps, req *types.ManifestReq, mode acceptMode) *ManifestResponse {
+// a signed directive part for multipart, or 204 for single-body clients.
+func (l *ManifestLogic) respondNoUpdateAvailable(app *models.Apps, req *types.ManifestReq, mode acceptMode) (*ManifestResponse, error) {
 	if mode == acceptMultipart {
-		body, boundary, err := buildMultipart(nil, "", noUpdateAvailableDirective)
+		sigHeader, err := l.signIfExpected(app.Id, noUpdateAvailableDirective, req.ExpectSignature)
+		if err != nil {
+			return nil, err
+		}
+		body, boundary, err := buildMultipart(nil, "", noUpdateAvailableDirective, sigHeader)
 		if err != nil {
 			l.Errorf("build noUpdateAvailable multipart failed: %v", err)
-			return l.response(app, req, "error", "", http.StatusInternalServerError, nil, "")
+			return l.response(app, req, "error", "", http.StatusInternalServerError, nil, ""), nil
 		}
 		return l.response(app, req, "no_update", "", http.StatusOK, body,
-			"multipart/mixed; boundary="+boundary)
+			"multipart/mixed; boundary="+boundary, withSignature(sigHeader)), nil
 	}
-	return l.response(app, req, "no_update", "", http.StatusNoContent, nil, "")
+	return l.response(app, req, "no_update", "", http.StatusNoContent, nil, ""), nil
 }
 
 // respondNoUpdate handles a stream that has no published update. A client
@@ -136,7 +140,7 @@ func (l *ManifestLogic) respondNoUpdateAvailable(app *models.Apps, req *types.Ma
 // empty multipart (zero parts) or 204 (§5.1 step 6).
 func (l *ManifestLogic) respondNoUpdate(app *models.Apps, req *types.ManifestReq, mode acceptMode) *ManifestResponse {
 	if req.CurrentUpdateId == "" && mode == acceptMultipart {
-		body, boundary, err := buildMultipart(nil, "", nil)
+		body, boundary, err := buildMultipart(nil, "", nil, "")
 		if err != nil {
 			l.Errorf("build empty multipart failed: %v", err)
 			return l.response(app, req, "error", "", http.StatusInternalServerError, nil, "")

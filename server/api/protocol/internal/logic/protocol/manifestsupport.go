@@ -75,9 +75,8 @@ func commonManifestHeader() http.Header {
 
 // buildMultipart assembles a multipart/mixed body with an optional manifest
 // part and an optional directive part, returning the body and the boundary.
-// signatureValue, when non-empty, is attached to the manifest part as the
-// expo-signature header.
-func buildMultipart(manifestBody []byte, signatureValue string, directiveBody []byte) ([]byte, string, error) {
+// Signature values, when non-empty, are attached to the part they sign.
+func buildMultipart(manifestBody []byte, manifestSignature string, directiveBody []byte, directiveSignature string) ([]byte, string, error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 
@@ -85,8 +84,8 @@ func buildMultipart(manifestBody []byte, signatureValue string, directiveBody []
 		header := textproto.MIMEHeader{}
 		header.Set("Content-Disposition", `form-data; name="manifest"`)
 		header.Set("Content-Type", "application/json; charset=utf-8")
-		if signatureValue != "" {
-			header.Set("expo-signature", signatureValue)
+		if manifestSignature != "" {
+			header.Set("expo-signature", manifestSignature)
 		}
 		part, err := w.CreatePart(header)
 		if err != nil {
@@ -101,6 +100,9 @@ func buildMultipart(manifestBody []byte, signatureValue string, directiveBody []
 		header := textproto.MIMEHeader{}
 		header.Set("Content-Disposition", `form-data; name="directive"`)
 		header.Set("Content-Type", "application/json; charset=utf-8")
+		if directiveSignature != "" {
+			header.Set("expo-signature", directiveSignature)
+		}
 		part, err := w.CreatePart(header)
 		if err != nil {
 			return nil, "", err

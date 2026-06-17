@@ -211,6 +211,51 @@ func TestManifestNoUpdateAvailableMultipart(t *testing.T) {
 	}
 }
 
+func TestManifestSignsNoUpdateAvailableDirective(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newTestSvcCtx(ctrl)
+
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privPem := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+	ciphertext := encryptForTest(svcCtx.SigningEncryptionKey, privPem)
+
+	const uuid = "11111111-1111-1111-1111-111111111111"
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
+	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
+		Return(&models.Updates{Id: "u-1", ManifestUuid: uuid, ManifestSnapshot: testSnapshot}, nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").
+		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: string(ciphertext)}, nil)
+
+	req := baseManifestReq()
+	req.CurrentUpdateId = uuid
+	req.ExpectSignature = `sig, keyid="main", alg="rsa-v1_5-sha256"`
+	res, err := NewManifestLogic(context.Background(), svcCtx).Manifest(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	directiveBody, directiveHeader := readMultipartPart(t, res.Header.Get("Content-Type"), res.Body, "directive")
+	if string(directiveBody) != string(noUpdateAvailableDirective) {
+		t.Fatalf("directive body = %q, want %q", directiveBody, noUpdateAvailableDirective)
+	}
+	sigHeader := directiveHeader.Get("expo-signature")
+	if sigHeader == "" {
+		t.Fatal("directive expo-signature header missing")
+	}
+	sig, err := base64.StdEncoding.DecodeString(extractSig(t, sigHeader))
+	if err != nil {
+		t.Fatalf("signature not base64: %v", err)
+	}
+	digest := sha256.Sum256(directiveBody)
+	if err := rsa.VerifyPKCS1v15(&priv.PublicKey, crypto.SHA256, digest[:], sig); err != nil {
+		t.Errorf("directive signature verification failed: %v", err)
+	}
+}
+
 func TestManifestNoPublishedUpdate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newTestSvcCtx(ctrl)
@@ -360,6 +405,12 @@ func extractSig(t *testing.T, header string) string {
 
 func readManifestPart(t *testing.T, contentType string, body []byte) string {
 	t.Helper()
+	data, _ := readMultipartPart(t, contentType, body, "manifest")
+	return string(data)
+}
+
+func readMultipartPart(t *testing.T, contentType string, body []byte, formName string) ([]byte, http.Header) {
+	t.Helper()
 	_, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		t.Fatalf("parse media type: %v", err)
@@ -370,14 +421,14 @@ func readManifestPart(t *testing.T, contentType string, body []byte) string {
 		if err != nil {
 			break
 		}
-		if part.FormName() == "manifest" {
+		if part.FormName() == formName {
 			data, err := io.ReadAll(part)
 			if err != nil {
 				t.Fatalf("read part: %v", err)
 			}
-			return string(data)
+			return data, http.Header(part.Header)
 		}
 	}
-	t.Fatal("manifest part not found")
-	return ""
+	t.Fatalf("%s part not found", formName)
+	return nil, nil
 }
