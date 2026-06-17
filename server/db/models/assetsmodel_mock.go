@@ -236,6 +236,45 @@ func (c *MockAssetsModelFindOneByAppIdSha256Call) DoAndReturn(f func(context.Con
 	return c
 }
 
+// FindOrphans mocks base method.
+func (m *MockAssetsModel) FindOrphans(ctx context.Context) ([]*Assets, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindOrphans", ctx)
+	ret0, _ := ret[0].([]*Assets)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindOrphans indicates an expected call of FindOrphans.
+func (mr *MockAssetsModelMockRecorder) FindOrphans(ctx any) *MockAssetsModelFindOrphansCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOrphans", reflect.TypeOf((*MockAssetsModel)(nil).FindOrphans), ctx)
+	return &MockAssetsModelFindOrphansCall{Call: call}
+}
+
+// MockAssetsModelFindOrphansCall wrap *gomock.Call
+type MockAssetsModelFindOrphansCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAssetsModelFindOrphansCall) Return(arg0 []*Assets, arg1 error) *MockAssetsModelFindOrphansCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAssetsModelFindOrphansCall) Do(f func(context.Context) ([]*Assets, error)) *MockAssetsModelFindOrphansCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAssetsModelFindOrphansCall) DoAndReturn(f func(context.Context) ([]*Assets, error)) *MockAssetsModelFindOrphansCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Insert mocks base method.
 func (m *MockAssetsModel) Insert(ctx context.Context, data *Assets) (sql.Result, error) {
 	m.ctrl.T.Helper()

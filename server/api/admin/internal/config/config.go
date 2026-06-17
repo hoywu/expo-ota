@@ -27,4 +27,11 @@ type Config struct {
 	SigningKeyEncryptionKey string
 	// PresignExpireSeconds is the validity window of COS pre-signed PUT URLs.
 	PresignExpireSeconds int64 `json:",default=900"`
+	// InitialAdmin seeds the first admin user on startup when the users table
+	// is empty (§11.1.3). Both fields are optional; bootstrap is skipped when
+	// either is empty or once any user already exists.
+	InitialAdmin struct {
+		Username string `json:",optional"`
+		Password string `json:",optional"`
+	}
 }

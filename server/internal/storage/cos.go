@@ -82,3 +82,8 @@ func (s *cosStore) Head(ctx context.Context, storageKey string) (int64, error) {
 
 	return resp.ContentLength, nil
 }
+
+func (s *cosStore) Delete(ctx context.Context, storageKey string) error {
+	_, err := s.client.Object.Delete(ctx, storageKey)
+	return err
+}

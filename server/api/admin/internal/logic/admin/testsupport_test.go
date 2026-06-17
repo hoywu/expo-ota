@@ -95,6 +95,11 @@ func (f *fakeStore) Head(_ context.Context, storageKey string) (int64, error) {
 	return size, nil
 }
 
+func (f *fakeStore) Delete(_ context.Context, storageKey string) error {
+	delete(f.headSizes, storageKey)
+	return nil
+}
+
 func newTestApp() *models.Apps {
 	return &models.Apps{
 		Id:        "app-1",

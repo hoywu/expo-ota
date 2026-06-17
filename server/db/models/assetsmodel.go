@@ -24,6 +24,9 @@ type (
 		// CountOrphanByAppId counts assets of an app no longer referenced by
 		// any non-deleted update (neither as launch asset nor regular asset).
 		CountOrphanByAppId(ctx context.Context, appId string) (int64, error)
+		// FindOrphans returns every asset (across all apps) no longer
+		// referenced by any non-deleted update, for the asset-gc job.
+		FindOrphans(ctx context.Context) ([]*Assets, error)
 	}
 
 	customAssetsModel struct {
@@ -78,4 +81,21 @@ func (m *customAssetsModel) CountOrphanByAppId(ctx context.Context, appId string
 	var count int64
 	err := m.conn.QueryRowCtx(ctx, &count, query, appId)
 	return count, err
+}
+
+func (m *customAssetsModel) FindOrphans(ctx context.Context) ([]*Assets, error) {
+	query := fmt.Sprintf(`
+		select %s from %s a
+		where not exists (
+			select 1 from "public"."update_assets" ua
+			join "public"."updates" u on u.id = ua.update_id
+			where ua.asset_id = a.id and u.deleted_at is null
+		)
+		  and not exists (
+			select 1 from "public"."updates" u2
+			where u2.launch_asset_id = a.id and u2.deleted_at is null
+		  )`, assetsRows, m.table)
+	var resp []*Assets
+	err := m.conn.QueryRowsCtx(ctx, &resp, query)
+	return resp, err
 }

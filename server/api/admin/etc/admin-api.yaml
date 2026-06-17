@@ -16,3 +16,6 @@ Cos:
   KeyPrefix: ${COS_KEY_PREFIX}
 SigningKeyEncryptionKey: ${SIGNING_KEY_ENCRYPTION_KEY}
 PresignExpireSeconds: 900 # COS pre-signed PUT URL 有效期 15 分钟
+InitialAdmin:
+  Username: ${INITIAL_ADMIN_USERNAME}
+  Password: ${INITIAL_ADMIN_PASSWORD}

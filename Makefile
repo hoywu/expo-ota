@@ -3,7 +3,7 @@ SHELL := bash
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 .ONESHELL:
-.PHONY: gen-admin-api gen-protocol-api new-sql migrate gen-model dev-admin dev-protocol test infra-up infra-down infra-clear infra-log
+.PHONY: gen-admin-api gen-protocol-api new-sql migrate gen-model dev-admin dev-protocol asset-gc test infra-up infra-down infra-clear infra-log
 
 SERVER_ENV_FILE := server/deploy/.env
 define with_server_env
@@ -36,6 +36,10 @@ dev-admin:
 
 dev-protocol:
 	$(call with_server_env, go run ./api/protocol -f ./api/protocol/etc/protocol-api.yaml)
+
+# Orphan asset garbage collection (run from cron in production)
+asset-gc:
+	$(call with_server_env, go run ./cmd/asset-gc)
 
 # Tests
 test:
