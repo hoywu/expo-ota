@@ -7,10 +7,6 @@ import type {
   SigningKeyResp,
 } from '@/types/admin';
 
-export function getSigningKey(appSlug: string): Promise<SigningKeyResp> {
-  return apiRequest<SigningKeyResp>(`/apps/${encodeURIComponent(appSlug)}/signing-key`);
-}
-
 export function listSigningKeys(appSlug: string): Promise<ListSigningKeysResp> {
   return apiRequest<ListSigningKeysResp>(`/apps/${encodeURIComponent(appSlug)}/signing-keys`);
 }
@@ -37,23 +33,23 @@ export function importSigningKey(
 
 export function patchSigningKey(
   appSlug: string,
-  data: PatchSigningKeyReq,
-  keyId?: string
+  keyId: string,
+  data: Pick<PatchSigningKeyReq, 'enabled'>
 ): Promise<SigningKeyResp> {
-  const path = keyId
-    ? `/apps/${encodeURIComponent(appSlug)}/signing-keys/${encodeURIComponent(keyId)}`
-    : `/apps/${encodeURIComponent(appSlug)}/signing-key`;
-  return apiRequest<SigningKeyResp>(path, {
-    method: 'PATCH',
-    body: data,
-  });
+  return apiRequest<SigningKeyResp>(
+    `/apps/${encodeURIComponent(appSlug)}/signing-keys/${encodeURIComponent(keyId)}`,
+    {
+      method: 'PATCH',
+      body: data,
+    }
+  );
 }
 
-export function deleteSigningKey(appSlug: string, keyId?: string): Promise<void> {
-  const path = keyId
-    ? `/apps/${encodeURIComponent(appSlug)}/signing-keys/${encodeURIComponent(keyId)}`
-    : `/apps/${encodeURIComponent(appSlug)}/signing-key`;
-  return apiRequest<void>(path, {
-    method: 'DELETE',
-  });
+export function deleteSigningKey(appSlug: string, keyId: string): Promise<void> {
+  return apiRequest<void>(
+    `/apps/${encodeURIComponent(appSlug)}/signing-keys/${encodeURIComponent(keyId)}`,
+    {
+      method: 'DELETE',
+    }
+  );
 }

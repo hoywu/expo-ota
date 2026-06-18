@@ -15,7 +15,7 @@ import (
 
 func DeleteSigningKeyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.AppSlugPath
+		var req types.SigningKeyIdPath
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, httperr.BadRequest(err))
 			return

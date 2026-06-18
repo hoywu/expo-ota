@@ -106,7 +106,8 @@ const columns = [
       <div>
         <h2 class="text-2xl font-semibold text-default">API Tokens</h2>
         <p class="text-sm text-muted mt-1">
-          Tokens are for CI plan / finalize / publish only. Plaintext is shown once at creation.
+          Tokens are for CI plan / finalize only. Publish pending updates from the Updates page.
+          Plaintext is shown once at creation.
         </p>
       </div>
       <UButton label="Create token" icon="i-lucide-plus" @click="createOpen = true" />
@@ -132,7 +133,7 @@ bun run cli/publish.ts</pre
     <EmptyState
       v-else-if="items.length === 0"
       title="No API tokens"
-      description="Create a token for your CI pipeline to publish updates."
+      description="Create a token for your CI pipeline to upload updates (plan / finalize)."
       action-label="Create token"
       icon="i-lucide-key"
       @action="createOpen = true"

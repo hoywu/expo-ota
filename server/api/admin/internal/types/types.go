@@ -135,6 +135,10 @@ type ListAuditLogsResp struct {
 	NextCursor string         `json:"nextCursor,optional"`
 }
 
+type ListSigningKeysResp struct {
+	Items []SigningKeyResp `json:"items"`
+}
+
 type ListTokensResp struct {
 	Items []TokenItem `json:"items"`
 }
@@ -177,7 +181,7 @@ type MeResp struct {
 
 type PatchSigningKeyReq struct {
 	AppSlug string `path:"appSlug"`
-	KeyId   string `path:"keyId,optional"`
+	KeyId   string `path:"keyId"`
 	Enabled bool   `json:"enabled"`
 }
 
@@ -249,6 +253,11 @@ type RollbackResp struct {
 	CreatedAt    string `json:"createdAt"`
 }
 
+type SigningKeyIdPath struct {
+	AppSlug string `path:"appSlug"`
+	KeyId   string `path:"keyId"`
+}
+
 type SigningKeyResp struct {
 	KeyId         string `json:"keyId"`
 	Algorithm     string `json:"algorithm"`
@@ -257,15 +266,6 @@ type SigningKeyResp struct {
 	CreatedAt     string `json:"createdAt"`
 	DisabledAt    string `json:"disabledAt,optional"`
 	HasPrivateKey bool   `json:"hasPrivateKey"`
-}
-
-type ListSigningKeysResp struct {
-	Items []SigningKeyResp `json:"items"`
-}
-
-type SigningKeyIdPath struct {
-	AppSlug string `path:"appSlug"`
-	KeyId   string `path:"keyId"`
 }
 
 type TokenIdPath struct {

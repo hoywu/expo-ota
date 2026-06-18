@@ -92,31 +92,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.GetSigningKeyHandler(serverCtx),
 			},
 			{
-				Method:  http.MethodGet,
-				Path:    "/apps/:appSlug/signing-keys",
-				Handler: admin.ListSigningKeysHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPatch,
-				Path:    "/apps/:appSlug/signing-key",
-				Handler: admin.PatchSigningKeyHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPatch,
-				Path:    "/apps/:appSlug/signing-keys/:keyId",
-				Handler: admin.PatchSigningKeyHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodDelete,
-				Path:    "/apps/:appSlug/signing-key",
-				Handler: admin.DeleteSigningKeyHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodDelete,
-				Path:    "/apps/:appSlug/signing-keys/:keyId",
-				Handler: admin.DeleteSigningKeyByIDHandler(serverCtx),
-			},
-			{
 				Method:  http.MethodPost,
 				Path:    "/apps/:appSlug/signing-key/generate",
 				Handler: admin.GenerateSigningKeyHandler(serverCtx),
@@ -125,6 +100,21 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/apps/:appSlug/signing-key/import",
 				Handler: admin.ImportSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/signing-keys",
+				Handler: admin.ListSigningKeysHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/apps/:appSlug/signing-keys/:keyId",
+				Handler: admin.PatchSigningKeyHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/apps/:appSlug/signing-keys/:keyId",
+				Handler: admin.DeleteSigningKeyHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodGet,
@@ -155,16 +145,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/apps/:appSlug/updates/cleanup",
 				Handler: admin.CleanupUpdatesHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/apps/:appSlug/uploads/finalize",
-				Handler: admin.FinalizeUploadHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/apps/:appSlug/uploads/plan",
-				Handler: admin.PlanUploadHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPost,
@@ -203,6 +183,22 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/uploads/finalize",
+				Handler: admin.FinalizeUploadHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/apps/:appSlug/uploads/plan",
+				Handler: admin.PlanUploadHandler(serverCtx),
+			},
+		},
 		rest.WithPrefix("/api/admin"),
 	)
 }

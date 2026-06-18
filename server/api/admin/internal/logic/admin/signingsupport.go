@@ -29,7 +29,9 @@ const (
 )
 
 var (
-	errSigningKeyNotFound = httperr.New(http.StatusNotFound, "signing key not found")
+	errSigningKeyNotFound    = httperr.New(http.StatusNotFound, "signing key not found")
+	errSigningKeyNotCooledDown = httperr.New(http.StatusBadRequest,
+		"signing key must be disabled before deletion")
 	errSigningKeyExists   = httperr.New(http.StatusConflict, "an enabled signing key already exists; disable it first")
 	errInvalidPublicKey   = httperr.New(http.StatusBadRequest, "publicKeyPem is not a valid PEM-encoded RSA public key")
 	errInvalidPrivateKey  = httperr.New(http.StatusBadRequest, "privateKeyPem is not a valid PEM-encoded RSA private key matching the public key")

@@ -13,7 +13,7 @@ Dashboard 侧复用 [server/CONTEXT.md](../server/CONTEXT.md) 的领域词汇。
 | -------- | ---------------- | ---- |
 | **RepublishPrevious** | Republish Previous | 复制历史 update 为新 pending 草稿；**不要**叫 Rollback（该词保留给协议 directive） |
 | **Publish** | 发布 | 将 `pending` update 切为 `published`；与 Finalize 不同 |
-| **Finalize** | — | 仅 CLI/API Token 发布链路；Dashboard MVP **不提供**浏览器内上传 |
+| **Finalize** | — | 仅 CLI/API Token 上传链路（plan / finalize）；Dashboard MVP **不提供**浏览器内上传 |
 | **AppSlug** | App Slug | 创建后只读，出现在 manifest URL 与路径中 |
 | **ApiToken** | API Token | 形态 `ota_pat_…`，明文仅创建时展示一次 |
 
@@ -62,7 +62,7 @@ Dashboard 是面向内部管理员的 SPA，通过同源 Nginx 反代调用 `adm
 │    JWT（管理员）| 不接受 Dashboard 直接使用 API Token      │
 └─────────────────────────────────────────────────────────┘
 
-CLI/CI ──API Token──► plan / finalize / publish（Dashboard 只管理 Token，不代发）
+CLI/CI ──API Token──► plan / finalize（Dashboard 用 JWT Publish pending；只管理 Token，不代发上传）
 Native App ──────────► protocol-api（manifest / events，不经 Dashboard）
 ```
 
@@ -460,14 +460,14 @@ Delete 失败 400：`update must be at least 3 published versions behind...` →
 
 ### 7.6 API Tokens（`/apps/:appSlug/tokens`）
 
-**目的**：为 CI 创建/撤销 App 级发布凭据。
+**目的**：为 CI 创建/撤销 App 级上传凭据（plan / finalize）。
 
 **UI**：
 
-- 说明文案：Token 仅用于 `plan` / `finalize` / `publish`；明文只显示一次
+- 说明文案：Token 仅用于 `plan` / `finalize`；**Publish** pending update 须在 **Updates** 页用管理员 JWT 操作；明文只显示一次
 - 「Create token」→ `UModal`：`name`（必填）、`expiresAt`（可选 datetime-local → RFC3339）
 - 创建成功 **Modal 阻断关闭**，展示 `token` + CopyButton + 警告
-- 表格：`name`、`scopes`（固定 `publish`）、`createdBy`、`lastUsedAt`、`expiresAt`、`createdAt`、status（revoked 灰显）
+- 表格：`name`、`scopes`（固定 `publish`，语义为允许上传端点）、`createdBy`、`lastUsedAt`、`expiresAt`、`createdAt`、status（revoked 灰显）
 - Revoke → ConfirmModal → `DELETE .../api-tokens/:tokenId`
 
 **API**：
@@ -481,6 +481,7 @@ Delete 失败 400：`update must be at least 3 published versions behind...` →
 ```bash
 OTA_API=https://ota.example.com OTA_TOKEN=ota_pat_xxx OTA_APP_SLUG=my-app ...
 bun run cli/publish.ts
+# finalize 完成后，到 Updates 页 Publish pending 草稿
 ```
 
 ---
@@ -499,20 +500,21 @@ disabled → 可 Delete（硬删）
 
 **UI 区块**：
 
-1. **当前 Key 卡片**（`GET .../signing-key`，404 = 无 key）
-   - 展示最新一条 key（`created_at` 降序）
+1. **当前 Key 卡片**（数据来自 `GET .../signing-keys`：优先展示 enabled key，否则列表首条）
    - `keyId`、`algorithm`、`enabled`、`createdAt`、`disabledAt`
    - 公钥 PEM：`UTextarea` readonly + Download / Copy
    - `hasPrivateKey` false 时警告「Verify-only key, cannot sign manifests」
-   - 卡片内 Enable / Disable / Delete 针对该最新 key（`PATCH/DELETE .../signing-key`）
+   - 卡片内 Enable / Disable / Delete：`PATCH/DELETE .../signing-keys/{keyId}`
 
-2. **All keys 表格**（`GET .../signing-keys`）
+2. **All keys 表格**（同 `GET .../signing-keys`）
    - 列出该 App 全部 signing key（enabled + disabled 历史）
    - 列：`keyId`、`enabled`、`createdAt`、`disabledAt`、`hasPrivateKey`
-   - 每行操作：
+   - 每行操作（与卡片相同，均带 `keyId`）：
      - **Enable / Disable**：`PATCH .../signing-keys/{keyId} { enabled }`
      - **Delete**（仅 `disabledAt` 非空）：`DELETE .../signing-keys/{keyId}`
    - 空列表时显示 EmptyState
+
+> `GET .../signing-key` 仍保留为只读兼容端点（返回最新一条）；Dashboard 不调用。
 
 3. **Generate**（无 enabled key 时）
    - 输入 `keyId`（如 `main`）
@@ -800,12 +802,10 @@ GET    /api/admin/apps/:appSlug/api-tokens
 POST   /api/admin/apps/:appSlug/api-tokens
 DELETE /api/admin/apps/:appSlug/api-tokens/:tokenId
 GET    /api/admin/apps/:appSlug/signing-keys
-GET    /api/admin/apps/:appSlug/signing-key
+GET    /api/admin/apps/:appSlug/signing-key          # 只读；Dashboard 用 signing-keys
 POST   /api/admin/apps/:appSlug/signing-key/generate
 POST   /api/admin/apps/:appSlug/signing-key/import
-PATCH  /api/admin/apps/:appSlug/signing-key
 PATCH  /api/admin/apps/:appSlug/signing-keys/:keyId
-DELETE /api/admin/apps/:appSlug/signing-key
 DELETE /api/admin/apps/:appSlug/signing-keys/:keyId
 GET    /api/admin/users
 POST   /api/admin/users
@@ -819,9 +819,9 @@ GET    /api/admin/apps/:appSlug/audit-logs
 
 1. 登录（`INITIAL_ADMIN_*`）→ **Users** 修改默认密码  
 2. **Apps** → Create App  
-3. **API Tokens** → 创建 token，配置 CI  
+3. **API Tokens** → 创建 token，配置 CI（仅 plan / finalize）  
 4. （可选）**Signing Key** → Generate → 配置客户端 `app.json`  
-5. CI `finalize` → **Updates** → Publish pending  
+5. CI `cli/publish.ts` finalize → **Updates** → Publish pending（管理员 JWT）  
 6. 真机验证 manifest → **Update Detail** 查看统计  
 
 ### C. 已知差异与后续项

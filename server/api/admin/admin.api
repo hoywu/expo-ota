@@ -279,7 +279,7 @@ type (
 	}
 	PatchSigningKeyReq {
 		AppSlug string `path:"appSlug"`
-		KeyId   string `path:"keyId,optional"`
+		KeyId   string `path:"keyId"`
 		Enabled bool   `json:"enabled"`
 	}
 )
@@ -436,13 +436,6 @@ service admin-api {
 	@handler CleanupUpdates
 	post /apps/:appSlug/updates/cleanup (CleanupReq) returns (CleanupResp)
 
-	// —— Upload (6.4 / §7) ——
-	@handler PlanUpload
-	post /apps/:appSlug/uploads/plan (PlanReq) returns (PlanResp)
-
-	@handler FinalizeUpload
-	post /apps/:appSlug/uploads/finalize (FinalizeReq) returns (FinalizeResp)
-
 	// —— API Token (6.5) ——
 	@handler ListApiTokens
 	get /apps/:appSlug/api-tokens (AppSlugPath) returns (ListTokensResp)
@@ -467,15 +460,9 @@ service admin-api {
 	post /apps/:appSlug/signing-key/import (ImportSigningKeyReq) returns (SigningKeyResp)
 
 	@handler PatchSigningKey
-	patch /apps/:appSlug/signing-key (PatchSigningKeyReq) returns (SigningKeyResp)
-
-	@handler PatchSigningKey
 	patch /apps/:appSlug/signing-keys/:keyId (PatchSigningKeyReq) returns (SigningKeyResp)
 
 	@handler DeleteSigningKey
-	delete /apps/:appSlug/signing-key (AppSlugPath) returns (EmptyResp)
-
-	@handler DeleteSigningKeyByID
 	delete /apps/:appSlug/signing-keys/:keyId (SigningKeyIdPath) returns (EmptyResp)
 
 	// —— User (6.7) ——
@@ -497,5 +484,23 @@ service admin-api {
 	// —— Audit Log (6.8) ——
 	@handler ListAuditLogs
 	get /apps/:appSlug/audit-logs (ListAuditLogsReq) returns (ListAuditLogsResp)
+}
+
+// =====================================================================
+// Service Block 3: CI 发布端点（Bearer API Token，见 §6.5）
+// plan / finalize 仅供 CLI/CI 调用，不经 JWT；RegisterHandlers 生成的
+// routes.go 中无 rest.WithJwt 包裹，由 ApiTokenAuthMiddleware 强制校验。
+// =====================================================================
+@server (
+	prefix: /api/admin
+	group:  admin
+)
+service admin-api {
+	// —— Upload (6.4 / §7) ——
+	@handler PlanUpload
+	post /apps/:appSlug/uploads/plan (PlanReq) returns (PlanResp)
+
+	@handler FinalizeUpload
+	post /apps/:appSlug/uploads/finalize (FinalizeReq) returns (FinalizeResp)
 }
 

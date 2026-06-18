@@ -5,11 +5,9 @@ import (
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/config"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/httperr"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
@@ -37,12 +35,15 @@ func hashHex(plaintext string) string {
 	return models.ByteaHex(sum[:])
 }
 
-func runHandle(t *testing.T, tokens models.ApiTokensModel, apps models.AppsModel, method, path, authHeader string) (called bool, gotAuth string, rec *httptest.ResponseRecorder) {
+func runHandle(t *testing.T, tokens models.ApiTokensModel, apps models.AppsModel, method, path, authHeader string) (called bool, gotAuth, gotUserID string, rec *httptest.ResponseRecorder) {
 	t.Helper()
 	mw := NewApiTokenAuthMiddleware(newMwSvcCtx(tokens, apps))
 	next := func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		gotAuth = r.Header.Get("Authorization")
+		if v := r.Context().Value("userId"); v != nil {
+			gotUserID, _ = v.(string)
+		}
 	}
 	req := httptest.NewRequest(method, path, nil)
 	if authHeader != "" {
@@ -50,10 +51,10 @@ func runHandle(t *testing.T, tokens models.ApiTokensModel, apps models.AppsModel
 	}
 	rec = httptest.NewRecorder()
 	mw.Handle(next)(rec, req)
-	return called, gotAuth, rec
+	return called, gotAuth, gotUserID, rec
 }
 
-func TestApiTokenAuthBridgesValidToken(t *testing.T) {
+func TestApiTokenAuthAcceptsValidTokenOnCiUpload(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tokens := models.NewMockApiTokensModel(ctrl)
 	apps := models.NewMockAppsModel(ctrl)
@@ -65,55 +66,40 @@ func TestApiTokenAuthBridgesValidToken(t *testing.T) {
 		Return(&models.Apps{Id: "app-1", AppSlug: "my-app"}, nil)
 	tokens.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-	called, gotAuth, _ := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
+	called, gotAuth, gotUserID, _ := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
 	if !called {
 		t.Fatal("next was not called")
 	}
-	if !strings.HasPrefix(gotAuth, "Bearer ") {
-		t.Fatalf("Authorization not rewritten: %q", gotAuth)
+	if gotAuth != "Bearer "+plaintext {
+		t.Fatalf("Authorization rewritten on CI upload: %q", gotAuth)
 	}
-
-	claims := jwt.MapClaims{}
-	if _, err := jwt.ParseWithClaims(strings.TrimPrefix(gotAuth, "Bearer "), claims,
-		func(*jwt.Token) (any, error) { return []byte(testSecret), nil }); err != nil {
-		t.Fatalf("minted JWT did not parse: %v", err)
-	}
-	if claims["userId"] != "user-9" {
-		t.Errorf("userId claim = %v, want user-9", claims["userId"])
+	if gotUserID != "user-9" {
+		t.Errorf("userId in context = %q, want user-9", gotUserID)
 	}
 }
 
-func TestApiTokenAuthAllowsPublishEndpointForTokenApp(t *testing.T) {
+func TestApiTokenAuthRejectsPublishEndpoint(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tokens := models.NewMockApiTokensModel(ctrl)
 	apps := models.NewMockAppsModel(ctrl)
 
-	plaintext := "ota_pat_publish"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
-		Return(&models.ApiTokens{Id: "tok-1", AppId: "app-1", CreatedBy: "user-9", Scopes: []string{"publish"}}, nil)
-	apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").
-		Return(&models.Apps{Id: "app-1", AppSlug: "my-app"}, nil)
-	tokens.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-
-	called, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/updates/update-1/publish", "Bearer "+plaintext)
-	if !called {
-		t.Fatal("next was not called")
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/updates/update-1/publish", "Bearer ota_pat_publish")
+	if called {
+		t.Fatal("next should not be called for publish via API token")
 	}
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want default 200", rec.Code)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 }
 
-func TestApiTokenAuthRejectsNonPublishEndpoint(t *testing.T) {
+func TestApiTokenAuthRejectsNonCiUploadEndpoint(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tokens := models.NewMockApiTokensModel(ctrl)
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_validtoken"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
-		Return(&models.ApiTokens{Id: "tok-1", AppId: "app-1", CreatedBy: "user-9", Scopes: []string{"publish"}}, nil)
 
-	called, _, rec := runHandle(t, tokens, apps, http.MethodGet, "/api/admin/users", "Bearer "+plaintext)
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodGet, "/api/admin/users", "Bearer "+plaintext)
 	if called {
 		t.Fatal("next should not be called for a non-publish endpoint")
 	}
@@ -133,7 +119,7 @@ func TestApiTokenAuthRejectsWrongApp(t *testing.T) {
 	apps.EXPECT().FindOneByAppSlug(gomock.Any(), "other-app").
 		Return(&models.Apps{Id: "app-2", AppSlug: "other-app"}, nil)
 
-	called, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/other-app/uploads/finalize", "Bearer "+plaintext)
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/other-app/uploads/finalize", "Bearer "+plaintext)
 	if called {
 		t.Fatal("next should not be called for another app")
 	}
@@ -151,7 +137,7 @@ func TestApiTokenAuthRejectsMissingPublishScope(t *testing.T) {
 	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
 		Return(&models.ApiTokens{Id: "tok-1", AppId: "app-1", CreatedBy: "user-9"}, nil)
 
-	called, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
 	if called {
 		t.Fatal("next should not be called without publish scope")
 	}
@@ -169,7 +155,7 @@ func TestApiTokenAuthRejectsRevoked(t *testing.T) {
 	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
 		Return(&models.ApiTokens{RevokedAt: sql.NullTime{Time: time.Now(), Valid: true}}, nil)
 
-	called, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
 	if called {
 		t.Fatal("next should not be called for a revoked token")
 	}
@@ -187,7 +173,7 @@ func TestApiTokenAuthRejectsExpired(t *testing.T) {
 	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
 		Return(&models.ApiTokens{ExpiresAt: sql.NullTime{Time: time.Now().Add(-time.Hour), Valid: true}}, nil)
 
-	called, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
 	if called {
 		t.Fatal("next should not be called for an expired token")
 	}
@@ -205,9 +191,38 @@ func TestApiTokenAuthRejectsUnknown(t *testing.T) {
 	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
 		Return(nil, models.ErrNotFound)
 
-	called, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
 	if called {
 		t.Fatal("next should not be called for an unknown token")
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestApiTokenAuthRejectsCiUploadWithoutToken(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	tokens := models.NewMockApiTokensModel(ctrl)
+	apps := models.NewMockAppsModel(ctrl)
+
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "")
+	if called {
+		t.Fatal("next should not be called without an API token on CI upload routes")
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestApiTokenAuthRejectsJwtOnCiUpload(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	tokens := models.NewMockApiTokensModel(ctrl)
+	apps := models.NewMockAppsModel(ctrl)
+
+	jwtHeader := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig"
+	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", jwtHeader)
+	if called {
+		t.Fatal("next should not be called with JWT on CI upload routes")
 	}
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want 401", rec.Code)
@@ -221,7 +236,7 @@ func TestApiTokenAuthPassesThroughJwt(t *testing.T) {
 	// No EXPECT: a non-ota_pat bearer must not touch the token store.
 
 	jwtHeader := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig"
-	called, gotAuth, _ := runHandle(t, tokens, apps, http.MethodGet, "/api/admin/apps", jwtHeader)
+	called, gotAuth, _, _ := runHandle(t, tokens, apps, http.MethodGet, "/api/admin/apps", jwtHeader)
 	if !called {
 		t.Fatal("next was not called for a JWT bearer")
 	}

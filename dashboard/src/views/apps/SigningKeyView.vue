@@ -101,10 +101,10 @@ function openDelete(row: SigningKeyResp): void {
   deleteOpen.value = true;
 }
 
-async function setEnabled(enabled: boolean, keyId?: string): Promise<void> {
+async function setEnabled(enabled: boolean, keyId: string): Promise<void> {
   actionLoading.value = true;
   try {
-    await signingApi.patchSigningKey(appSlug.value, { enabled }, keyId);
+    await signingApi.patchSigningKey(appSlug.value, keyId, { enabled });
     disableOpen.value = false;
     toast.add({
       title: enabled ? 'Signing key enabled' : 'Signing key disabled',
@@ -377,7 +377,7 @@ const columns = [
       confirm-label="Disable"
       confirm-color="warning"
       :loading="actionLoading"
-      @confirm="setEnabled(false, actionKey?.keyId)"
+      @confirm="actionKey && setEnabled(false, actionKey.keyId)"
     />
 
     <ConfirmModal

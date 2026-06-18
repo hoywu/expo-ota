@@ -36,11 +36,7 @@ func (l *PatchSigningKeyLogic) PatchSigningKey(req *types.PatchSigningKeyReq) (r
 	}
 
 	var key *models.CodeSigningKeys
-	if req.KeyId != "" {
-		key, err = l.svcCtx.CodeSigningKeysModel.FindOneByAppIdKeyId(l.ctx, app.Id, req.KeyId)
-	} else {
-		key, err = l.svcCtx.CodeSigningKeysModel.FindOneByAppId(l.ctx, app.Id)
-	}
+	key, err = l.svcCtx.CodeSigningKeysModel.FindOneByAppIdKeyId(l.ctx, app.Id, req.KeyId)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, errSigningKeyNotFound

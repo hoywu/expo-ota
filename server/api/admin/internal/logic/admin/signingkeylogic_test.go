@@ -158,9 +158,11 @@ func TestDeleteSigningKeyRequiresCooldown(t *testing.T) {
 	}
 	for _, tc := range cases {
 		m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
-		m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(tc.key, nil)
+		m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(tc.key, nil)
 
-		_, err := NewDeleteSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).DeleteSigningKey(&types.AppSlugPath{AppSlug: "my-app"})
+		_, err := NewDeleteSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).DeleteSigningKey(&types.SigningKeyIdPath{
+			AppSlug: "my-app", KeyId: "main",
+		})
 		if !errors.Is(err, tc.want) {
 			t.Errorf("%s: err = %v, want %v", tc.name, err, tc.want)
 		}
@@ -176,10 +178,12 @@ func TestDeleteSigningKeyAfterCooldown(t *testing.T) {
 		DisabledAt: sql.NullTime{Valid: true},
 	}
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
-	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(key, nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(key, nil)
 	m.CodeSigningKeys.EXPECT().Delete(gomock.Any(), "key-1").Return(nil)
 
-	if _, err := NewDeleteSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).DeleteSigningKey(&types.AppSlugPath{AppSlug: "my-app"}); err != nil {
+	if _, err := NewDeleteSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).DeleteSigningKey(&types.SigningKeyIdPath{
+		AppSlug: "my-app", KeyId: "main",
+	}); err != nil {
 		t.Fatalf("DeleteSigningKey returned error: %v", err)
 	}
 }
@@ -229,7 +233,7 @@ func TestPatchSigningKeyDisable(t *testing.T) {
 
 	key := &models.CodeSigningKeys{Id: "key-1", AppId: "app-1", Enabled: true}
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
-	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(key, nil)
+	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(key, nil)
 	m.CodeSigningKeys.EXPECT().Update(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, k *models.CodeSigningKeys) error {
 			if k.Enabled || !k.DisabledAt.Valid {
@@ -239,7 +243,7 @@ func TestPatchSigningKeyDisable(t *testing.T) {
 		})
 
 	resp, err := NewPatchSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).PatchSigningKey(&types.PatchSigningKeyReq{
-		AppSlug: "my-app", Enabled: false,
+		AppSlug: "my-app", KeyId: "main", Enabled: false,
 	})
 	if err != nil {
 		t.Fatalf("PatchSigningKey returned error: %v", err)

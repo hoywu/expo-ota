@@ -6,18 +6,13 @@ package admin
 import (
 	"context"
 	"errors"
-	"net/http"
 
-	"github.com/hoywu/expo-ota/server/api/admin/internal/httperr"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
 	"github.com/hoywu/expo-ota/server/db/models"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
-
-var errSigningKeyNotCooledDown = httperr.New(http.StatusBadRequest,
-	"signing key must be disabled before deletion")
 
 type DeleteSigningKeyLogic struct {
 	logx.Logger
@@ -33,13 +28,13 @@ func NewDeleteSigningKeyLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	}
 }
 
-func (l *DeleteSigningKeyLogic) DeleteSigningKey(req *types.AppSlugPath) (resp *types.EmptyResp, err error) {
+func (l *DeleteSigningKeyLogic) DeleteSigningKey(req *types.SigningKeyIdPath) (resp *types.EmptyResp, err error) {
 	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := l.svcCtx.CodeSigningKeysModel.FindOneByAppId(l.ctx, app.Id)
+	key, err := l.svcCtx.CodeSigningKeysModel.FindOneByAppIdKeyId(l.ctx, app.Id, req.KeyId)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, errSigningKeyNotFound
