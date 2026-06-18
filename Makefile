@@ -4,7 +4,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
 .ONESHELL:
-.PHONY: gen-admin-api gen-protocol-api new-sql migrate gen-model dev dev-admin dev-protocol dev-dashboard asset-gc test infra-up infra-down infra-clear infra-log
+.PHONY: gen-admin-api gen-protocol-api new-sql migrate gen-model dev dev-admin dev-protocol dev-dashboard format asset-gc test infra-up infra-down infra-clear infra-log
 
 SERVER_ENV_FILE := server/deploy/.env
 define with_server_env
@@ -72,6 +72,10 @@ dev-protocol:
 
 dev-dashboard:
 	cd dashboard && bun run dev
+
+format:
+	cd server && go fmt ./...
+	cd ../dashboard && bun run format
 
 # Orphan asset garbage collection (run from cron in production)
 asset-gc:
