@@ -1,0 +1,15 @@
+{
+  "name": "@expo-ota/cli",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "log-update": "^8.0.0",
+    "mime": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
