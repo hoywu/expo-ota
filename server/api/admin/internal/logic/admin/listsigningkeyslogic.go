@@ -45,4 +45,3 @@ func (l *ListSigningKeysLogic) ListSigningKeys(req *types.AppSlugPath) (resp *ty
 	}
 	return &types.ListSigningKeysResp{Items: items}, nil
 }
-

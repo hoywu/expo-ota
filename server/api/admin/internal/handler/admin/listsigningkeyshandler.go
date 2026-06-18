@@ -27,4 +27,3 @@ func ListSigningKeysHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 	}
 }
-

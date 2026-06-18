@@ -374,9 +374,7 @@ const columns = [
           <UButton
             label="Import"
             :loading="actionLoading"
-            :disabled="
-              !importKeyId.trim() || !importPublicPem.trim() || !importPrivatePem.trim()
-            "
+            :disabled="!importKeyId.trim() || !importPublicPem.trim() || !importPrivatePem.trim()"
             @click="importKey"
           />
         </div>

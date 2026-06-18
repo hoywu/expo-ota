@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal.vue';
 import { useAppsStore } from '@/stores/apps';
 import * as updatesApi from '@/api/updates';
 import { handleApiError, manifestUrl } from '@/utils/format';
+import { buildLatestPublishedIds } from '@/utils/updates';
 import type { UpdateListItem } from '@/types/admin';
 
 const route = useRoute();
@@ -140,6 +141,19 @@ async function confirmCleanup(): Promise<void> {
   }
 }
 
+const latestPublishedIds = computed(() => buildLatestPublishedIds(items.value));
+
+function isLatestPublished(row: UpdateListItem): boolean {
+  return latestPublishedIds.value.has(row.id);
+}
+
+const tableMeta = {
+  class: {
+    tr: (row: { original: UpdateListItem }) =>
+      isLatestPublished(row.original) ? 'bg-success/5 ring-1 ring-inset ring-success/25' : '',
+  },
+};
+
 const columns = [
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'runtimeVersion', header: 'Runtime' },
@@ -230,14 +244,19 @@ const columns = [
     />
 
     <div v-else class="overflow-x-auto">
-      <UTable :data="items" :columns="columns">
+      <UTable :data="items" :columns="columns" :meta="tableMeta">
         <template #status-cell="{ row }">
-          <UBadge
-            :color="row.original.status === 'published' ? 'success' : 'warning'"
-            variant="subtle"
-          >
-            {{ row.original.status }}
-          </UBadge>
+          <div class="flex items-center gap-1.5">
+            <UBadge
+              :color="row.original.status === 'published' ? 'success' : 'warning'"
+              variant="subtle"
+            >
+              {{ row.original.status }}
+            </UBadge>
+            <UBadge v-if="isLatestPublished(row.original)" color="success" variant="solid">
+              Latest
+            </UBadge>
+          </div>
         </template>
         <template #platform-cell="{ row }">
           <UIcon
@@ -277,7 +296,7 @@ const columns = [
               @click="publishUpdate(row.original)"
             />
             <UButton
-              v-if="row.original.status === 'published'"
+              v-if="row.original.status === 'published' && !isLatestPublished(row.original)"
               label="Republish Previous"
               size="xs"
               color="neutral"
