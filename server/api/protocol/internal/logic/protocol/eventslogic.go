@@ -57,14 +57,27 @@ func (l *EventsLogic) Events(req *types.EventReq) (resp *types.EmptyResp, err er
 		return nil, err
 	}
 
+	manifestUuid := req.ManifestUuid
+	updateId := req.UpdateId
+	// Legacy clients sent expo manifest.id in updateId before reload.
+	if manifestUuid == "" && updateId != "" {
+		manifestUuid = updateId
+		updateId = ""
+	}
+	if manifestUuid != "" {
+		if update, err := l.svcCtx.UpdatesModel.FindOneByAppIdManifestUuid(l.ctx, app.Id, manifestUuid); err == nil {
+			updateId = update.Id
+		}
+	}
+
 	row := &models.ClientEvents{
 		AppId:          app.Id,
 		OccurredAt:     occurredAt,
 		ReceivedAt:     time.Now(),
 		EventId:        req.EventId,
 		EventType:      req.EventType,
-		UpdateId:       nullString(req.UpdateId),
-		ManifestUuid:   nullString(req.ManifestUuid),
+		UpdateId:       nullString(updateId),
+		ManifestUuid:   nullString(manifestUuid),
 		RuntimeVersion: nullString(req.RuntimeVersion),
 		Platform:       nullString(req.Platform),
 		DeviceId:       req.DeviceId,

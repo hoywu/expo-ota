@@ -25,9 +25,9 @@ type (
 	ClientEventsModel interface {
 		clientEventsModel
 		withSession(session sqlx.Session) ClientEventsModel
-		// StatsByUpdate aggregates success/failure devices and durations of
-		// the given update.
-		StatsByUpdate(ctx context.Context, appId, updateId string) (*ClientEventUpdateStats, error)
+		// StatsByUpdate aggregates success/failure devices and durations for
+		// the update identified by manifest UUID (manifest.id / expo-current-update-id).
+		StatsByUpdate(ctx context.Context, appId, manifestUuid string) (*ClientEventUpdateStats, error)
 		// InsertIgnoreConflict inserts a client event, deduplicating on
 		// (app_id, event_id) so client retries do not double-count. It
 		// reports whether a new row was actually inserted (§5.6 idempotency).
@@ -68,7 +68,7 @@ func (m *customClientEventsModel) InsertIgnoreConflict(ctx context.Context, data
 	return affected > 0, nil
 }
 
-func (m *customClientEventsModel) StatsByUpdate(ctx context.Context, appId, updateId string) (*ClientEventUpdateStats, error) {
+func (m *customClientEventsModel) StatsByUpdate(ctx context.Context, appId, manifestUuid string) (*ClientEventUpdateStats, error) {
 	query := `
 		select
 			count(distinct device_id) filter (where event_type = 'update_succeeded') as succeeded_devices,
@@ -77,9 +77,9 @@ func (m *customClientEventsModel) StatsByUpdate(ctx context.Context, appId, upda
 			max(duration_ms) filter (where event_type = 'update_succeeded')          as duration_max_ms,
 			avg(duration_ms) filter (where event_type = 'update_succeeded')::int     as duration_avg_ms
 		from "public"."client_events"
-		where app_id = $1 and update_id = $2`
+		where app_id = $1 and manifest_uuid = $2`
 	var resp ClientEventUpdateStats
-	err := m.conn.QueryRowCtx(ctx, &resp, query, appId, updateId)
+	err := m.conn.QueryRowCtx(ctx, &resp, query, appId, manifestUuid)
 	if err != nil {
 		return nil, err
 	}

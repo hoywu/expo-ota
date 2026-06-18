@@ -94,3 +94,30 @@ func TestEventsAppNotFound(t *testing.T) {
 		t.Errorf("err = %v, want errAppNotFound", err)
 	}
 }
+
+func TestEventsResolvesManifestUuidToUpdateId(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newTestSvcCtx(ctrl)
+
+	req := baseEventReq()
+	req.ManifestUuid = "11111111-2222-3333-4444-555555555555"
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Updates.EXPECT().FindOneByAppIdManifestUuid(gomock.Any(), "app-1", req.ManifestUuid).
+		Return(&models.Updates{Id: "update-1", ManifestUuid: req.ManifestUuid}, nil)
+	m.ClientEvents.EXPECT().InsertIgnoreConflict(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, row *models.ClientEvents) (bool, error) {
+			if row.UpdateId.String != "update-1" {
+				t.Errorf("updateId = %q, want update-1", row.UpdateId.String)
+			}
+			if row.ManifestUuid.String != req.ManifestUuid {
+				t.Errorf("manifestUuid = %q", row.ManifestUuid.String)
+			}
+			return true, nil
+		})
+
+	_, err := NewEventsLogic(context.Background(), svcCtx).Events(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

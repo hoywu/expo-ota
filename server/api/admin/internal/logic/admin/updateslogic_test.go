@@ -174,7 +174,7 @@ func TestGetUpdateIncludesRequestStats(t *testing.T) {
 	m.Assets.EXPECT().FindAllByIds(gomock.Any(), []string{"asset-launch"}).Return([]*models.Assets{launchAsset}, nil)
 	m.ManifestRequests.EXPECT().CountDistinctDevices(gomock.Any(), "app-1", "update-1").Return(int64(5), nil)
 	m.ManifestRequests.EXPECT().CountWithoutDeviceId(gomock.Any(), "app-1", "update-1").Return(int64(2), nil)
-	m.ClientEvents.EXPECT().StatsByUpdate(gomock.Any(), "app-1", "update-1").Return(&models.ClientEventUpdateStats{
+	m.ClientEvents.EXPECT().StatsByUpdate(gomock.Any(), "app-1", "11111111-2222-3333-4444-555555555555").Return(&models.ClientEventUpdateStats{
 		SucceededDevices: 4,
 		FailedDevices:    1,
 	}, nil)

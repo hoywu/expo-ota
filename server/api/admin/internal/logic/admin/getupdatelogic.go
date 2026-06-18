@@ -99,7 +99,7 @@ func (l *GetUpdateLogic) GetUpdate(req *types.UpdateIdPath) (resp *types.UpdateD
 	if err != nil {
 		return nil, err
 	}
-	eventStats, err := l.svcCtx.ClientEventsModel.StatsByUpdate(l.ctx, app.Id, update.Id)
+	eventStats, err := l.svcCtx.ClientEventsModel.StatsByUpdate(l.ctx, app.Id, update.ManifestUuid)
 	if err != nil {
 		return nil, err
 	}

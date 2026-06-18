@@ -237,18 +237,18 @@ func (c *MockClientEventsModelInsertIgnoreConflictCall) DoAndReturn(f func(conte
 }
 
 // StatsByUpdate mocks base method.
-func (m *MockClientEventsModel) StatsByUpdate(ctx context.Context, appId, updateId string) (*ClientEventUpdateStats, error) {
+func (m *MockClientEventsModel) StatsByUpdate(ctx context.Context, appId, manifestUuid string) (*ClientEventUpdateStats, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StatsByUpdate", ctx, appId, updateId)
+	ret := m.ctrl.Call(m, "StatsByUpdate", ctx, appId, manifestUuid)
 	ret0, _ := ret[0].(*ClientEventUpdateStats)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StatsByUpdate indicates an expected call of StatsByUpdate.
-func (mr *MockClientEventsModelMockRecorder) StatsByUpdate(ctx, appId, updateId any) *MockClientEventsModelStatsByUpdateCall {
+func (mr *MockClientEventsModelMockRecorder) StatsByUpdate(ctx, appId, manifestUuid any) *MockClientEventsModelStatsByUpdateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatsByUpdate", reflect.TypeOf((*MockClientEventsModel)(nil).StatsByUpdate), ctx, appId, updateId)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatsByUpdate", reflect.TypeOf((*MockClientEventsModel)(nil).StatsByUpdate), ctx, appId, manifestUuid)
 	return &MockClientEventsModelStatsByUpdateCall{Call: call}
 }
 

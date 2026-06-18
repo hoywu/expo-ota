@@ -490,7 +490,6 @@ https://<cos-domain>/[prefix/]apps/{appSlug}/assets/{sha256_b64url}
   "eventId": "<uuid>",
   "eventType": "update_succeeded" | "update_failed",
   "occurredAt": "2026-06-04T10:00:00.000Z",
-  "updateId": "<uuid>",
   "manifestUuid": "<uuid>",
   "runtimeVersion": "1.0.0",
   "platform": "ios",
@@ -502,6 +501,12 @@ https://<cos-domain>/[prefix/]apps/{appSlug}/assets/{sha256_b64url}
   "errorMessage": "..."
 }
 ```
+
+**字段说明**：
+
+- `manifestUuid`（推荐必填）：目标 update 的协议 ID，即 Expo manifest 的 `id` 字段。客户端应从 `checkForUpdateAsync()` / `fetchUpdateAsync()` 返回的 `manifest.id` 取值，**不要**用 `Updates.updateId`（那是当前正在运行的 update，在 `reloadAsync()` 之前仍是旧值）。
+- `updateId`（可选，legacy）：旧客户端可能把 manifest.id 误填在此字段；服务端会当作 `manifestUuid` 处理。
+- 服务端收到 `manifestUuid` 后，会解析为内部 `updates.id` 写入 `client_events.update_id`；Dashboard 统计按 `manifest_uuid` 聚合。
 
 **响应**：
 
@@ -987,6 +992,13 @@ export async function getDeviceId(): Promise<string> {
   }
   return id;
 }
+
+// 在 checkForUpdateAsync() 之前调用；需在 app.json 声明 updates.requestHeaders["expo-device-id"] 并重新打 native 包。
+export async function ensureDeviceIdHeader(deviceId?: string): Promise<string> {
+  const id = deviceId ?? (await getDeviceId());
+  Updates.setUpdateRequestHeadersOverride({ "expo-device-id": id });
+  return id;
+}
 ```
 
 ### 8.3 事件上报代码
@@ -1001,7 +1013,6 @@ type ReportEvent = {
   eventId: string;
   eventType: "update_succeeded" | "update_failed";
   occurredAt: string;
-  updateId?: string;
   manifestUuid?: string;
   runtimeVersion: string;
   platform: "ios" | "android";
@@ -1030,49 +1041,49 @@ async function report(ev: ReportEvent): Promise<void> {
   // 静默失败
 }
 
-export async function checkAndReport(): Promise<void> {
+export async function checkAndReport(autoUpdate = true): Promise<boolean> {
   const start = Date.now();
   const deviceId = await getDeviceId();
+  await ensureDeviceIdHeader(deviceId);
   const platform = Platform.OS as "ios" | "android";
   const appVersion = (await Application.nativeApplicationVersion) ?? "";
   const osVersion = String(Platform.Version);
-  const runtimeVersion = Updates.runtimeVersion;
+  const runtimeVersion = Updates.runtimeVersion ?? "";
+  const base = { runtimeVersion, platform, deviceId, appVersion, osVersion };
 
+  let manifest: Updates.Manifest | undefined;
   try {
     const check = await Updates.checkForUpdateAsync();
-    if (!check.isAvailable) return;
+    if (!check.isAvailable) return false;
+    if (!autoUpdate) return true;
+    manifest = check.manifest;
 
-    await Updates.fetchUpdateAsync();
-    const updateId = Updates.updateId;
-    const manifestUuid = Updates.manifest?.id;
+    const fetchResult = await Updates.fetchUpdateAsync();
+    manifest = fetchResult.manifest ?? check.manifest;
 
     await report({
       eventId: crypto.randomUUID(),
       eventType: "update_succeeded",
       occurredAt: new Date().toISOString(),
-      updateId: updateId ?? undefined,
-      manifestUuid: manifestUuid ?? undefined,
-      runtimeVersion,
-      platform,
-      deviceId,
-      appVersion,
-      osVersion,
+      manifestUuid: manifest?.id,
+      ...base,
       durationMs: Date.now() - start,
     });
+
+    await Updates.reloadAsync();
+    return true;
   } catch (err: any) {
     await report({
       eventId: crypto.randomUUID(),
       eventType: "update_failed",
       occurredAt: new Date().toISOString(),
-      runtimeVersion,
-      platform,
-      deviceId,
-      appVersion,
-      osVersion,
+      manifestUuid: manifest?.id,
+      ...base,
       durationMs: Date.now() - start,
       errorCode: err?.code ?? "UNKNOWN",
       errorMessage: String(err?.message ?? err),
     });
+    return false;
   }
 }
 ```
@@ -1171,7 +1182,7 @@ export async function checkAndReport(): Promise<void> {
 
 `manifest_requests` 只记录已解析到有效 App 的 manifest 请求结果。协议头不合法、App 不存在或已软删等 app 解析前失败会直接返回错误，不写观测行。
 
-**Update 详情页 "统计卡"**（时间段 [t1, t2]）：
+**Update 详情页 "统计卡"**（时间段 [t1, t2]；`$2` = 该 update 的 `manifest_uuid`）：
 
 ```sql
 WITH req AS (
@@ -1190,7 +1201,7 @@ ev AS (
     AVG(duration_ms)::int AS avg_ms
   FROM client_events
   WHERE app_id = $1
-    AND update_id = $2
+    AND manifest_uuid = $2
     AND received_at BETWEEN $3 AND $4
   GROUP BY event_type
 )
