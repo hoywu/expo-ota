@@ -1,6 +1,7 @@
 Name: admin-api
 Host: 0.0.0.0
 Port: 8081
+Timeout: 300000 # HTTP 请求超时 300 秒（finalize 大量 asset 时 COS HEAD + DB 较慢）
 DataSource: ${DB_URL}
 Auth:
   AccessSecret: ${AUTH_ACCESS_SECRET}
