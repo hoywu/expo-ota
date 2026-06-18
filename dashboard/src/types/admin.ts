@@ -80,6 +80,7 @@ export interface UpdateAssetItem {
 
 export interface UpdateStatsResp {
   requestedDevices: number;
+  requestsWithoutDeviceId: number;
   succeededDevices: number;
   failedDevices: number;
   durationMinMs?: number;

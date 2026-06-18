@@ -102,15 +102,17 @@ const columns = [
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h2 class="text-2xl font-semibold text-default">API Tokens</h2>
-        <p class="text-sm text-muted mt-1">
-          Tokens are for CI plan / finalize only. Publish pending updates from the Updates page.
-          Plaintext is shown once at creation.
-        </p>
-      </div>
-      <UButton label="Create token" icon="i-lucide-plus" @click="createOpen = true" />
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+      <p class="text-sm text-muted">
+        Tokens are for CI plan / finalize only. Publish pending updates from the Updates page.
+        Plaintext is shown once at creation.
+      </p>
+      <UButton
+        label="Create token"
+        icon="i-lucide-plus"
+        class="shrink-0"
+        @click="createOpen = true"
+      />
     </div>
 
     <UAlert
@@ -139,45 +141,51 @@ bun run cli/publish.ts</pre
       @action="createOpen = true"
     />
 
-    <UTable v-else :data="items" :columns="columns">
-      <template #scopes-cell="{ row }">
-        {{ row.original.scopes.join(', ') }}
-      </template>
-      <template #lastUsedAt-cell="{ row }">
-        <TimeAgo v-if="row.original.lastUsedAt" :iso="row.original.lastUsedAt" />
-        <span v-else class="text-muted">—</span>
-      </template>
-      <template #expiresAt-cell="{ row }">
-        <TimeAgo v-if="row.original.expiresAt" :iso="row.original.expiresAt" />
-        <span v-else class="text-muted">Never</span>
-      </template>
-      <template #createdAt-cell="{ row }">
-        <TimeAgo :iso="row.original.createdAt" />
-      </template>
-      <template #status-cell="{ row }">
-        <UBadge v-if="row.original.revokedAt" color="neutral" variant="subtle">revoked</UBadge>
-        <UBadge v-else color="success" variant="subtle">active</UBadge>
-      </template>
-      <template #actions-cell="{ row }">
-        <UButton
-          v-if="!row.original.revokedAt"
-          label="Revoke"
-          size="xs"
-          color="error"
-          variant="ghost"
-          @click="openRevoke(row.original)"
-        />
-      </template>
-    </UTable>
+    <UCard v-else variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+      <UTable :data="items" :columns="columns">
+        <template #scopes-cell="{ row }">
+          {{ row.original.scopes.join(', ') }}
+        </template>
+        <template #lastUsedAt-cell="{ row }">
+          <TimeAgo v-if="row.original.lastUsedAt" :iso="row.original.lastUsedAt" />
+          <span v-else class="text-muted">—</span>
+        </template>
+        <template #expiresAt-cell="{ row }">
+          <TimeAgo v-if="row.original.expiresAt" :iso="row.original.expiresAt" />
+          <span v-else class="text-muted">Never</span>
+        </template>
+        <template #createdAt-cell="{ row }">
+          <TimeAgo :iso="row.original.createdAt" />
+        </template>
+        <template #status-cell="{ row }">
+          <UBadge v-if="row.original.revokedAt" color="neutral" variant="subtle">revoked</UBadge>
+          <UBadge v-else color="success" variant="subtle">active</UBadge>
+        </template>
+        <template #actions-cell="{ row }">
+          <UButton
+            v-if="!row.original.revokedAt"
+            label="Revoke"
+            size="xs"
+            color="error"
+            variant="ghost"
+            @click="openRevoke(row.original)"
+          />
+        </template>
+      </UTable>
+    </UCard>
 
     <UModal v-model:open="createOpen" title="Create API token" :dismissible="false">
       <template #body>
         <div class="space-y-4">
           <UFormField label="Name" required>
-            <UInput v-model="createName" placeholder="CI production" />
+            <UInput v-model="createName" placeholder="CI production" class="form-control" />
           </UFormField>
           <UFormField label="Expires at (optional)">
-            <UInput v-model="createExpires" type="datetime-local" />
+            <UInput
+              v-model="createExpires"
+              type="datetime-local"
+              class="form-control dashboard-filter-datetime"
+            />
           </UFormField>
         </div>
       </template>

@@ -153,7 +153,7 @@ const assetColumns = [
                 :href="detail.launchAssetUrl"
                 target="_blank"
                 rel="noopener"
-                class="text-primary text-xs truncate max-w-48"
+                class="text-primary text-xs truncate min-w-0 max-w-xs"
               >
                 {{ detail.launchAssetKey }}
               </a>
@@ -172,7 +172,12 @@ const assetColumns = [
           icon="i-lucide-bar-chart-2"
         />
         <div v-else class="grid grid-cols-2 gap-3">
-          <StatCard label="Requested devices" :value="detail.stats.requestedDevices" />
+          <StatCard
+            label="Requested devices"
+            :value="detail.stats.requestedDevices"
+            :note-value="detail.stats.requestsWithoutDeviceId"
+            note-label="requests without device id"
+          />
           <StatCard label="Succeeded devices" :value="detail.stats.succeededDevices" />
           <StatCard label="Failed devices" :value="detail.stats.failedDevices" />
           <StatCard label="Min duration" :value="detail.stats.durationMinMs ?? 0" suffix="ms" />
@@ -185,19 +190,21 @@ const assetColumns = [
     <JsonPreview :data="detail.manifestPreview" class="mb-8" />
 
     <h3 class="font-medium text-default mb-3">Assets</h3>
-    <UTable :data="detail.assets" :columns="assetColumns">
-      <template #sha256-cell="{ row }">
-        <span class="font-mono text-xs">{{ truncateMiddle(row.original.sha256, 6, 6) }}</span>
-      </template>
-      <template #size-cell="{ row }">
-        {{ formatBytes(row.original.size) }}
-      </template>
-      <template #url-cell="{ row }">
-        <a :href="row.original.url" target="_blank" rel="noopener" class="text-primary text-xs"
-          >Open</a
-        >
-      </template>
-    </UTable>
+    <UCard variant="subtle" :ui="{ body: 'p-0 sm:p-0' }" class="mb-8">
+      <UTable :data="detail.assets" :columns="assetColumns">
+        <template #sha256-cell="{ row }">
+          <span class="font-mono text-xs">{{ truncateMiddle(row.original.sha256, 6, 6) }}</span>
+        </template>
+        <template #size-cell="{ row }">
+          {{ formatBytes(row.original.size) }}
+        </template>
+        <template #url-cell="{ row }">
+          <a :href="row.original.url" target="_blank" rel="noopener" class="text-primary text-xs"
+            >Open</a
+          >
+        </template>
+      </UTable>
+    </UCard>
 
     <ConfirmModal
       v-model:open="deleteOpen"

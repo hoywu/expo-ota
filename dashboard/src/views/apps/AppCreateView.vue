@@ -53,9 +53,7 @@ const previewUrl = () => (appSlug.value ? manifestUrl(appSlug.value.trim()) : ''
 </script>
 
 <template>
-  <div class="max-w-lg">
-    <h2 class="text-2xl font-semibold text-default mb-6">Create App</h2>
-
+  <div class="max-w-xl">
     <UAlert
       color="info"
       variant="subtle"
@@ -75,22 +73,22 @@ const previewUrl = () => (appSlug.value ? manifestUrl(appSlug.value.trim()) : ''
         <UInput
           v-model="appSlug"
           placeholder="my-app"
-          class="font-mono"
+          class="font-mono form-control"
           @blur="validateSlug"
           @input="slugError = null"
         />
       </UFormField>
 
       <UFormField label="Name" required>
-        <UInput v-model="name" placeholder="My App" />
+        <UInput v-model="name" placeholder="My App" class="form-control" />
       </UFormField>
 
       <UFormField label="Description">
-        <UTextarea v-model="description" :rows="3" />
+        <UTextarea v-model="description" :rows="3" class="form-control" />
       </UFormField>
 
       <UFormField v-if="appSlug" label="Manifest URL (preview)">
-        <UInput :model-value="previewUrl()" readonly class="font-mono text-xs" />
+        <UInput :model-value="previewUrl()" readonly class="font-mono text-xs form-control" />
       </UFormField>
 
       <div class="flex gap-2 pt-2">

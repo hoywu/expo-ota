@@ -120,6 +120,10 @@ const breadcrumb = computed(() => {
           <UNavigationMenu :collapsed="collapsed" :items="[appNav]" orientation="vertical" />
         </template>
       </template>
+
+      <template #footer="{ collapsed }">
+        <UserMenu v-model:change-password-open="changePasswordOpen" :collapsed="collapsed" />
+      </template>
     </UDashboardSidebar>
 
     <UDashboardPanel>
@@ -136,7 +140,6 @@ const breadcrumb = computed(() => {
           </template>
           <template #right>
             <AppSwitcher v-if="inAppContext" />
-            <UserMenu v-model:change-password-open="changePasswordOpen" />
           </template>
         </UDashboardNavbar>
       </template>

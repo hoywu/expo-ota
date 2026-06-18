@@ -81,6 +81,45 @@ func (c *MockManifestRequestsModelCountDistinctDevicesCall) DoAndReturn(f func(c
 	return c
 }
 
+// CountWithoutDeviceId mocks base method.
+func (m *MockManifestRequestsModel) CountWithoutDeviceId(ctx context.Context, appId, servedUpdateId string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountWithoutDeviceId", ctx, appId, servedUpdateId)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountWithoutDeviceId indicates an expected call of CountWithoutDeviceId.
+func (mr *MockManifestRequestsModelMockRecorder) CountWithoutDeviceId(ctx, appId, servedUpdateId any) *MockManifestRequestsModelCountWithoutDeviceIdCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountWithoutDeviceId", reflect.TypeOf((*MockManifestRequestsModel)(nil).CountWithoutDeviceId), ctx, appId, servedUpdateId)
+	return &MockManifestRequestsModelCountWithoutDeviceIdCall{Call: call}
+}
+
+// MockManifestRequestsModelCountWithoutDeviceIdCall wrap *gomock.Call
+type MockManifestRequestsModelCountWithoutDeviceIdCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockManifestRequestsModelCountWithoutDeviceIdCall) Return(arg0 int64, arg1 error) *MockManifestRequestsModelCountWithoutDeviceIdCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockManifestRequestsModelCountWithoutDeviceIdCall) Do(f func(context.Context, string, string) (int64, error)) *MockManifestRequestsModelCountWithoutDeviceIdCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockManifestRequestsModelCountWithoutDeviceIdCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockManifestRequestsModelCountWithoutDeviceIdCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Delete mocks base method.
 func (m *MockManifestRequestsModel) Delete(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()

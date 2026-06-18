@@ -333,12 +333,13 @@ type UpdateListItem struct {
 }
 
 type UpdateStatsResp struct {
-	RequestedDevices int `json:"requestedDevices"`
-	SucceededDevices int `json:"succeededDevices"`
-	FailedDevices    int `json:"failedDevices"`
-	DurationMinMs    int `json:"durationMinMs,optional"`
-	DurationMaxMs    int `json:"durationMaxMs,optional"`
-	DurationAvgMs    int `json:"durationAvgMs,optional"`
+	RequestedDevices        int `json:"requestedDevices"`
+	RequestsWithoutDeviceId int `json:"requestsWithoutDeviceId"`
+	SucceededDevices        int `json:"succeededDevices"`
+	FailedDevices           int `json:"failedDevices"`
+	DurationMinMs           int `json:"durationMinMs,optional"`
+	DurationMaxMs           int `json:"durationMaxMs,optional"`
+	DurationAvgMs           int `json:"durationAvgMs,optional"`
 }
 
 type UserIdPath struct {

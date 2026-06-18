@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import ConfirmModal from '@/components/ConfirmModal.vue';
 import { useAppsStore } from '@/stores/apps';
 import * as updatesApi from '@/api/updates';
-import { handleApiError, manifestUrl } from '@/utils/format';
+import { handleApiError, manifestUrl, truncateMiddle } from '@/utils/format';
 import { buildLatestPublishedIds } from '@/utils/updates';
 import type { UpdateListItem } from '@/types/admin';
 
@@ -159,7 +159,7 @@ const columns = [
   { accessorKey: 'runtimeVersion', header: 'Runtime' },
   { accessorKey: 'platform', header: 'Platform' },
   { accessorKey: 'message', header: 'Message' },
-  { accessorKey: 'manifestUuid', header: 'Manifest UUID' },
+  { accessorKey: 'manifestUuid', header: 'Manifest UUID', size: 240, minSize: 200 },
   { accessorKey: 'createdAt', header: 'Created' },
   { id: 'actions', header: '' },
 ];
@@ -173,11 +173,11 @@ const columns = [
           <h2 class="text-lg font-semibold text-default">{{ appsStore.currentApp.name }}</h2>
           <p class="font-mono text-sm text-muted">{{ appsStore.currentApp.appSlug }}</p>
         </div>
-        <div class="flex items-center gap-2">
-          <code class="text-xs bg-elevated px-2 py-1 rounded font-mono truncate max-w-md">
+        <div class="flex items-center gap-2 min-w-0 justify-end">
+          <code class="text-xs bg-elevated px-2 py-1 rounded font-mono w-fit max-w-full truncate">
             {{ manifestUrl(appSlug) }}
           </code>
-          <CopyButton :value="manifestUrl(appSlug)" label="Copy manifest URL" />
+          <CopyButton :value="manifestUrl(appSlug)" label="Copy manifest URL" class="shrink-0" />
         </div>
       </div>
     </UCard>
@@ -193,33 +193,35 @@ const columns = [
 
     <UDashboardToolbar class="mb-4 px-0">
       <template #left>
-        <USelectMenu
-          :items="platformOptions"
-          :model-value="platform"
-          value-key="value"
-          placeholder="Platform"
-          class="min-w-32"
-          @update:model-value="platform = $event as string | undefined"
-        />
-        <USelectMenu
-          :items="[
-            { label: 'All versions', value: '' },
-            ...runtimeVersions.map((v) => ({ label: v, value: v })),
-          ]"
-          :model-value="runtimeVersion"
-          value-key="value"
-          placeholder="Runtime version"
-          class="min-w-40"
-          @update:model-value="runtimeVersion = ($event as string) ?? ''"
-        />
-        <USelectMenu
-          :items="statusOptions"
-          :model-value="status"
-          value-key="value"
-          placeholder="Status"
-          class="min-w-32"
-          @update:model-value="status = $event as string | undefined"
-        />
+        <div class="dashboard-filters">
+          <USelectMenu
+            :items="platformOptions"
+            :model-value="platform"
+            value-key="value"
+            placeholder="Platform"
+            class="dashboard-filter-select-sm"
+            @update:model-value="platform = $event as string | undefined"
+          />
+          <USelectMenu
+            :items="[
+              { label: 'All versions', value: '' },
+              ...runtimeVersions.map((v) => ({ label: v, value: v })),
+            ]"
+            :model-value="runtimeVersion"
+            value-key="value"
+            placeholder="Runtime version"
+            class="dashboard-filter-select-md"
+            @update:model-value="runtimeVersion = ($event as string) ?? ''"
+          />
+          <USelectMenu
+            :items="statusOptions"
+            :model-value="status"
+            value-key="value"
+            placeholder="Status"
+            class="dashboard-filter-select-sm"
+            @update:model-value="status = $event as string | undefined"
+          />
+        </div>
       </template>
       <template #right>
         <UButton
@@ -244,68 +246,76 @@ const columns = [
     />
 
     <div v-else class="overflow-x-auto">
-      <UTable :data="items" :columns="columns" :meta="tableMeta">
-        <template #status-cell="{ row }">
-          <div class="flex items-center gap-1.5">
-            <UBadge
-              :color="row.original.status === 'published' ? 'success' : 'warning'"
-              variant="subtle"
+      <UCard variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+        <UTable :data="items" :columns="columns" :meta="tableMeta">
+          <template #status-cell="{ row }">
+            <div class="flex items-center gap-1.5">
+              <UBadge
+                :color="row.original.status === 'published' ? 'success' : 'warning'"
+                variant="subtle"
+              >
+                {{ row.original.status }}
+              </UBadge>
+              <UBadge v-if="isLatestPublished(row.original)" color="success" variant="solid">
+                Latest
+              </UBadge>
+            </div>
+          </template>
+          <template #platform-cell="{ row }">
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <UIcon
+                :name="
+                  row.original.platform === 'ios'
+                    ? 'i-lucide-smartphone'
+                    : 'i-lucide-tablet-smartphone'
+                "
+                class="size-4 shrink-0"
+              />
+              {{ row.original.platform }}
+            </span>
+          </template>
+          <template #message-cell="{ row }">
+            <span class="truncate max-w-xs block">{{ row.original.message || '—' }}</span>
+          </template>
+          <template #manifestUuid-cell="{ row }">
+            <span
+              class="font-mono text-xs inline-flex items-center gap-1 whitespace-nowrap min-w-52"
             >
-              {{ row.original.status }}
-            </UBadge>
-            <UBadge v-if="isLatestPublished(row.original)" color="success" variant="solid">
-              Latest
-            </UBadge>
-          </div>
-        </template>
-        <template #platform-cell="{ row }">
-          <UIcon
-            :name="
-              row.original.platform === 'ios' ? 'i-lucide-smartphone' : 'i-lucide-tablet-smartphone'
-            "
-            class="size-4"
-          />
-          {{ row.original.platform }}
-        </template>
-        <template #message-cell="{ row }">
-          <span class="truncate max-w-xs block">{{ row.original.message || '—' }}</span>
-        </template>
-        <template #manifestUuid-cell="{ row }">
-          <span class="font-mono text-xs flex items-center gap-1">
-            {{ row.original.manifestUuid.slice(0, 8) }}…
-            <CopyButton :value="row.original.manifestUuid" />
-          </span>
-        </template>
-        <template #createdAt-cell="{ row }">
-          <TimeAgo :iso="row.original.createdAt" />
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex justify-end gap-1">
-            <UButton
-              label="View"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              :to="`/apps/${appSlug}/updates/${row.original.id}`"
-            />
-            <UButton
-              v-if="row.original.status === 'pending'"
-              label="Publish"
-              size="xs"
-              :loading="actionLoadingId === row.original.id"
-              @click="publishUpdate(row.original)"
-            />
-            <UButton
-              v-if="row.original.status === 'published' && !isLatestPublished(row.original)"
-              label="Republish Previous"
-              size="xs"
-              color="neutral"
-              variant="outline"
-              @click="openRepublish(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
+              {{ truncateMiddle(row.original.manifestUuid, 14, 8) }}
+              <CopyButton :value="row.original.manifestUuid" />
+            </span>
+          </template>
+          <template #createdAt-cell="{ row }">
+            <TimeAgo :iso="row.original.createdAt" />
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex justify-end gap-1">
+              <UButton
+                label="View"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :to="`/apps/${appSlug}/updates/${row.original.id}`"
+              />
+              <UButton
+                v-if="row.original.status === 'pending'"
+                label="Publish"
+                size="xs"
+                :loading="actionLoadingId === row.original.id"
+                @click="publishUpdate(row.original)"
+              />
+              <UButton
+                v-if="row.original.status === 'published' && !isLatestPublished(row.original)"
+                label="Republish Previous"
+                size="xs"
+                color="neutral"
+                variant="outline"
+                @click="openRepublish(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </UCard>
     </div>
 
     <div v-if="nextCursor" class="mt-4 text-center">
@@ -315,7 +325,12 @@ const columns = [
     <UModal v-model:open="cleanupOpen" title="Cleanup old updates">
       <template #body>
         <UFormField label="Keep latest N published updates per stream">
-          <UInput v-model.number="cleanupKeepN" type="number" min="1" />
+          <UInput
+            v-model.number="cleanupKeepN"
+            type="number"
+            min="1"
+            class="form-control max-w-xs"
+          />
         </UFormField>
       </template>
       <template #footer>

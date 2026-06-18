@@ -95,6 +95,10 @@ func (l *GetUpdateLogic) GetUpdate(req *types.UpdateIdPath) (resp *types.UpdateD
 	if err != nil {
 		return nil, err
 	}
+	requestsWithoutDeviceId, err := l.svcCtx.ManifestRequestsModel.CountWithoutDeviceId(l.ctx, app.Id, update.Id)
+	if err != nil {
+		return nil, err
+	}
 	eventStats, err := l.svcCtx.ClientEventsModel.StatsByUpdate(l.ctx, app.Id, update.Id)
 	if err != nil {
 		return nil, err
@@ -116,12 +120,13 @@ func (l *GetUpdateLogic) GetUpdate(req *types.UpdateIdPath) (resp *types.UpdateD
 		Assets:          items,
 		ManifestPreview: manifestPreview,
 		Stats: types.UpdateStatsResp{
-			RequestedDevices: int(requestedDevices),
-			SucceededDevices: int(eventStats.SucceededDevices),
-			FailedDevices:    int(eventStats.FailedDevices),
-			DurationMinMs:    int(eventStats.DurationMinMs.Int64),
-			DurationMaxMs:    int(eventStats.DurationMaxMs.Int64),
-			DurationAvgMs:    int(eventStats.DurationAvgMs.Int64),
+			RequestedDevices:        int(requestedDevices),
+			RequestsWithoutDeviceId: int(requestsWithoutDeviceId),
+			SucceededDevices:        int(eventStats.SucceededDevices),
+			FailedDevices:           int(eventStats.FailedDevices),
+			DurationMinMs:           int(eventStats.DurationMinMs.Int64),
+			DurationMaxMs:           int(eventStats.DurationMaxMs.Int64),
+			DurationAvgMs:           int(eventStats.DurationAvgMs.Int64),
 		},
 	}, nil
 }

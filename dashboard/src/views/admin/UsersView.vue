@@ -139,8 +139,7 @@ const columns = [
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-semibold text-default">Users</h2>
+    <div class="flex items-center justify-end mb-6">
       <UButton label="Create user" icon="i-lucide-user-plus" @click="createOpen = true" />
     </div>
 
@@ -155,48 +154,55 @@ const columns = [
       icon="i-lucide-users"
     />
 
-    <UTable v-else :data="items" :columns="columns">
-      <template #createdAt-cell="{ row }">
-        <TimeAgo :iso="row.original.createdAt" />
-      </template>
-      <template #lastLoginAt-cell="{ row }">
-        <TimeAgo v-if="row.original.lastLoginAt" :iso="row.original.lastLoginAt" />
-        <span v-else class="text-muted">—</span>
-      </template>
-      <template #status-cell="{ row }">
-        <UBadge v-if="row.original.disabledAt" color="error" variant="subtle">disabled</UBadge>
-        <UBadge v-else color="success" variant="subtle">active</UBadge>
-      </template>
-      <template #actions-cell="{ row }">
-        <div class="flex justify-end gap-1">
-          <UButton
-            label="Change password"
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            @click="openPassword(row.original)"
-          />
-          <UButton
-            v-if="!row.original.disabledAt"
-            label="Disable"
-            size="xs"
-            color="error"
-            variant="ghost"
-            @click="openDisable(row.original)"
-          />
-          <UButton v-else label="Enable" size="xs" @click="enableUser(row.original)" />
-        </div>
-      </template>
-    </UTable>
+    <UCard v-else variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+      <UTable :data="items" :columns="columns">
+        <template #createdAt-cell="{ row }">
+          <TimeAgo :iso="row.original.createdAt" />
+        </template>
+        <template #lastLoginAt-cell="{ row }">
+          <TimeAgo v-if="row.original.lastLoginAt" :iso="row.original.lastLoginAt" />
+          <span v-else class="text-muted">—</span>
+        </template>
+        <template #status-cell="{ row }">
+          <UBadge v-if="row.original.disabledAt" color="error" variant="subtle">disabled</UBadge>
+          <UBadge v-else color="success" variant="subtle">active</UBadge>
+        </template>
+        <template #actions-cell="{ row }">
+          <div class="flex justify-end gap-1">
+            <UButton
+              label="Change password"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              @click="openPassword(row.original)"
+            />
+            <UButton
+              v-if="!row.original.disabledAt"
+              label="Disable"
+              size="xs"
+              color="error"
+              variant="ghost"
+              @click="openDisable(row.original)"
+            />
+            <UButton v-else label="Enable" size="xs" @click="enableUser(row.original)" />
+          </div>
+        </template>
+      </UTable>
+    </UCard>
 
     <UModal v-model:open="createOpen" title="Create user">
       <template #body>
         <div class="space-y-4">
           <UFormField label="Username" required>
-            <UInput v-model="createUsername" autocomplete="off" />
+            <UInput v-model="createUsername" autocomplete="off" class="form-control" />
           </UFormField>
           <UFormField label="Password" required hint="At least 10 chars with letters and numbers">
-            <UInput v-model="createPassword" type="password" autocomplete="new-password" />
+            <UInput
+              v-model="createPassword"
+              type="password"
+              autocomplete="new-password"
+              class="form-control"
+            />
           </UFormField>
         </div>
       </template>
@@ -211,7 +217,12 @@ const columns = [
     <UModal v-model:open="passwordOpen" :title="`Change password for ${passwordTarget?.username}`">
       <template #body>
         <UFormField label="New password">
-          <UInput v-model="newPassword" type="password" autocomplete="new-password" />
+          <UInput
+            v-model="newPassword"
+            type="password"
+            autocomplete="new-password"
+            class="form-control"
+          />
         </UFormField>
       </template>
       <template #footer>

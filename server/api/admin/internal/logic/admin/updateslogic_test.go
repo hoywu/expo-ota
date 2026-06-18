@@ -152,6 +152,44 @@ func TestCleanupUpdatesReportsDeletedAndOrphans(t *testing.T) {
 	}
 }
 
+func TestGetUpdateIncludesRequestStats(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	update := newTestUpdate()
+	launchAsset := &models.Assets{
+		Id: "asset-launch", AppId: "app-1",
+		Sha256B64url: "launchsha", ContentType: "application/javascript",
+		StorageKey: "apps/my-app/assets/launchsha",
+	}
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Updates.EXPECT().FindOne(gomock.Any(), "update-1").Return(update, nil)
+	m.RuntimeVersions.EXPECT().FindOne(gomock.Any(), "rv-1").
+		Return(&models.RuntimeVersions{Id: "rv-1", AppId: "app-1", Version: "1.0.0"}, nil)
+	m.Assets.EXPECT().FindOne(gomock.Any(), "asset-launch").Return(launchAsset, nil)
+	m.UpdateAssets.EXPECT().FindAllByUpdateId(gomock.Any(), "update-1").Return([]*models.UpdateAssets{
+		{Id: "ua-1", UpdateId: "update-1", AssetId: "asset-launch", AssetKey: "bundlekey", SortOrder: 0},
+	}, nil)
+	m.Assets.EXPECT().FindAllByIds(gomock.Any(), []string{"asset-launch"}).Return([]*models.Assets{launchAsset}, nil)
+	m.ManifestRequests.EXPECT().CountDistinctDevices(gomock.Any(), "app-1", "update-1").Return(int64(5), nil)
+	m.ManifestRequests.EXPECT().CountWithoutDeviceId(gomock.Any(), "app-1", "update-1").Return(int64(2), nil)
+	m.ClientEvents.EXPECT().StatsByUpdate(gomock.Any(), "app-1", "update-1").Return(&models.ClientEventUpdateStats{
+		SucceededDevices: 4,
+		FailedDevices:    1,
+	}, nil)
+
+	resp, err := NewGetUpdateLogic(context.Background(), svcCtx).GetUpdate(&types.UpdateIdPath{
+		AppSlug: "my-app", UpdateId: "update-1",
+	})
+	if err != nil {
+		t.Fatalf("GetUpdate returned error: %v", err)
+	}
+	if resp.Stats.RequestedDevices != 5 || resp.Stats.RequestsWithoutDeviceId != 2 {
+		t.Errorf("stats = %+v", resp.Stats)
+	}
+}
+
 func TestRollbackUpdateCreatesPendingCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newFullTestSvcCtx(ctrl)

@@ -65,6 +65,7 @@ async function submit(): Promise<void> {
           v-model="username"
           autocomplete="username"
           placeholder="admin"
+          class="form-control"
           @keydown.enter="submit"
         />
       </UFormField>
@@ -74,6 +75,7 @@ async function submit(): Promise<void> {
           v-model="password"
           type="password"
           autocomplete="current-password"
+          class="form-control"
           @keydown.enter="submit"
         />
       </UFormField>

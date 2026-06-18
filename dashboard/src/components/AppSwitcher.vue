@@ -50,7 +50,7 @@ function switchApp(slug: string): void {
     value-key="value"
     placeholder="Select app"
     :loading="loading"
-    class="min-w-48"
+    class="dashboard-filter-select-md w-auto shrink-0 min-w-56"
     @update:model-value="switchApp($event as string)"
   />
 </template>

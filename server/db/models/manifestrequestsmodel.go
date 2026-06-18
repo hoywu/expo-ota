@@ -17,6 +17,9 @@ type (
 		// CountDistinctDevices counts distinct devices that were served the
 		// given update at the manifest endpoint.
 		CountDistinctDevices(ctx context.Context, appId, servedUpdateId string) (int64, error)
+		// CountWithoutDeviceId counts manifest requests for the given update
+		// that did not include expo-device-id.
+		CountWithoutDeviceId(ctx context.Context, appId, servedUpdateId string) (int64, error)
 	}
 
 	customManifestRequestsModel struct {
@@ -37,6 +40,18 @@ func (m *customManifestRequestsModel) withSession(session sqlx.Session) Manifest
 
 func (m *customManifestRequestsModel) CountDistinctDevices(ctx context.Context, appId, servedUpdateId string) (int64, error) {
 	query := `select count(distinct device_id) from "public"."manifest_requests" where app_id = $1 and served_update_id = $2`
+	var count int64
+	err := m.conn.QueryRowCtx(ctx, &count, query, appId, servedUpdateId)
+	return count, err
+}
+
+func (m *customManifestRequestsModel) CountWithoutDeviceId(ctx context.Context, appId, servedUpdateId string) (int64, error) {
+	query := `
+		select count(*)
+		from "public"."manifest_requests"
+		where app_id = $1
+		  and served_update_id = $2
+		  and coalesce(device_id, '') = ''`
 	var count int64
 	err := m.conn.QueryRowCtx(ctx, &count, query, appId, servedUpdateId)
 	return count, err

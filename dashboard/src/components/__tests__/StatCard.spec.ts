@@ -38,4 +38,23 @@ describe('StatCard', () => {
     await wrapper.setProps({ value: 99 });
     expect(wrapper.find('[data-testid="number-flow"]').text()).toBe('99');
   });
+
+  it('renders optional note below the main value', () => {
+    const wrapper = mount(StatCard, {
+      props: {
+        value: 12,
+        label: 'Requested devices',
+        noteValue: 3,
+        noteLabel: 'requests without device id',
+      },
+      global: {
+        stubs: {
+          UCard: { template: '<div><slot /></div>' },
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain('requests without device id');
+    expect(wrapper.findAll('[data-testid="number-flow"]')).toHaveLength(2);
+  });
 });

@@ -8,6 +8,7 @@ import { handleApiError } from '@/utils/format';
 
 defineProps<{
   changePasswordOpen?: boolean;
+  collapsed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -79,8 +80,10 @@ const menuItems = [
     <UButton
       color="neutral"
       variant="ghost"
-      :label="auth.user?.username ?? 'Account'"
-      trailing-icon="i-lucide-chevron-down"
+      block
+      :icon="collapsed ? 'i-lucide-user' : undefined"
+      :label="collapsed ? undefined : (auth.user?.username ?? 'Account')"
+      :trailing-icon="collapsed ? undefined : 'i-lucide-chevron-down'"
     />
   </UDropdownMenu>
 
@@ -95,10 +98,20 @@ const menuItems = [
     <template #body>
       <div class="space-y-4">
         <UFormField label="New password" :error="passwordError ?? undefined">
-          <UInput v-model="password" type="password" autocomplete="new-password" />
+          <UInput
+            v-model="password"
+            type="password"
+            autocomplete="new-password"
+            class="form-control"
+          />
         </UFormField>
         <UFormField label="Confirm password">
-          <UInput v-model="confirmPassword" type="password" autocomplete="new-password" />
+          <UInput
+            v-model="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            class="form-control"
+          />
         </UFormField>
       </div>
     </template>

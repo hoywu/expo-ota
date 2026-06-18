@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import TimeAgo from '@/components/TimeAgo.vue';
+import CopyButton from '@/components/CopyButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import * as auditApi from '@/api/audit';
 import { AUDIT_ACTIONS, handleApiError } from '@/utils/format';
@@ -67,6 +68,18 @@ function applyFilters(): void {
   load(true);
 }
 
+const payloadOpen = ref(false);
+const payloadTarget = ref<AuditLogItem | null>(null);
+
+const payloadFormatted = computed(() =>
+  payloadTarget.value?.payload ? JSON.stringify(payloadTarget.value.payload, null, 2) : ''
+);
+
+function openPayload(row: AuditLogItem): void {
+  payloadTarget.value = row;
+  payloadOpen.value = true;
+}
+
 const columns = [
   { accessorKey: 'occurredAt', header: 'Time' },
   { accessorKey: 'action', header: 'Action' },
@@ -79,22 +92,22 @@ const columns = [
 
 <template>
   <div>
-    <h2 class="text-2xl font-semibold text-default mb-6">Audit Logs</h2>
-
     <UDashboardToolbar class="mb-4 px-0">
       <template #left>
-        <USelectMenu
-          :items="actionOptions"
-          :model-value="action"
-          value-key="value"
-          placeholder="Action"
-          class="min-w-48"
-          @update:model-value="action = $event as (typeof AUDIT_ACTIONS)[number] | undefined"
-        />
-        <UInput v-model="actor" placeholder="Actor user ID" class="min-w-40" />
-        <UInput v-model="from" type="datetime-local" />
-        <UInput v-model="to" type="datetime-local" />
-        <UButton label="Apply" variant="outline" @click="applyFilters" />
+        <div class="dashboard-filters">
+          <USelectMenu
+            :items="actionOptions"
+            :model-value="action"
+            value-key="value"
+            placeholder="Action"
+            class="dashboard-filter-select-md"
+            @update:model-value="action = $event as (typeof AUDIT_ACTIONS)[number] | undefined"
+          />
+          <UInput v-model="actor" placeholder="Actor user ID" class="dashboard-filter-input" />
+          <UInput v-model="from" type="datetime-local" class="dashboard-filter-datetime" />
+          <UInput v-model="to" type="datetime-local" class="dashboard-filter-datetime" />
+          <UButton label="Apply" variant="outline" @click="applyFilters" />
+        </div>
       </template>
     </UDashboardToolbar>
 
@@ -110,44 +123,59 @@ const columns = [
     />
 
     <div v-else class="overflow-x-auto">
-      <UTable :data="items" :columns="columns">
-        <template #occurredAt-cell="{ row }">
-          <TimeAgo :iso="row.original.occurredAt" />
-        </template>
-        <template #actorUserId-cell="{ row }">
-          <span class="font-mono text-xs">{{ row.original.actorUserId ?? '—' }}</span>
-        </template>
-        <template #targetType-cell="{ row }">
-          <span v-if="row.original.targetType" class="text-xs">
-            {{ row.original.targetType }}
-            <span v-if="row.original.targetId" class="font-mono text-muted">
-              / {{ row.original.targetId }}</span
-            >
-          </span>
-          <span v-else class="text-muted">—</span>
-        </template>
-        <template #ip-cell="{ row }">
-          <span class="text-xs">{{ row.original.ip ?? '—' }}</span>
-        </template>
-        <template #payload-cell="{ row }">
-          <UAccordion
-            v-if="row.original.payload && Object.keys(row.original.payload).length > 0"
-            :items="[{ label: 'View', slot: 'payload' }]"
-            :default-value="[]"
-          >
-            <template #payload>
-              <pre class="text-xs font-mono p-2 max-w-md overflow-x-auto">{{
-                JSON.stringify(row.original.payload, null, 2)
-              }}</pre>
-            </template>
-          </UAccordion>
-          <span v-else class="text-muted">—</span>
-        </template>
-      </UTable>
+      <UCard variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+        <UTable :data="items" :columns="columns">
+          <template #occurredAt-cell="{ row }">
+            <TimeAgo :iso="row.original.occurredAt" />
+          </template>
+          <template #actorUserId-cell="{ row }">
+            <span class="font-mono text-xs">{{ row.original.actorUserId ?? '—' }}</span>
+          </template>
+          <template #targetType-cell="{ row }">
+            <span v-if="row.original.targetType" class="text-xs">
+              {{ row.original.targetType }}
+              <span v-if="row.original.targetId" class="font-mono text-muted">
+                / {{ row.original.targetId }}</span
+              >
+            </span>
+            <span v-else class="text-muted">—</span>
+          </template>
+          <template #ip-cell="{ row }">
+            <span class="text-xs">{{ row.original.ip ?? '—' }}</span>
+          </template>
+          <template #payload-cell="{ row }">
+            <UButton
+              v-if="row.original.payload && Object.keys(row.original.payload).length > 0"
+              label="View"
+              icon="i-lucide-braces"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              @click="openPayload(row.original)"
+            />
+            <span v-else class="text-muted">—</span>
+          </template>
+        </UTable>
+      </UCard>
     </div>
 
     <div v-if="nextCursor" class="mt-4 text-center">
       <UButton label="Load more" :loading="loadingMore" variant="outline" @click="load(false)" />
     </div>
+
+    <UModal v-model:open="payloadOpen" title="Payload" :description="payloadTarget?.action">
+      <template #body>
+        <div class="flex justify-end mb-2">
+          <CopyButton :value="payloadFormatted" label="Copy payload" />
+        </div>
+        <pre
+          class="text-xs font-mono overflow-auto p-3 bg-elevated rounded-md text-default max-h-[min(24rem,60vh)]"
+          >{{ payloadFormatted }}</pre
+        >
+      </template>
+      <template #footer>
+        <UButton label="Close" color="neutral" variant="outline" @click="payloadOpen = false" />
+      </template>
+    </UModal>
   </div>
 </template>

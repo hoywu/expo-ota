@@ -90,8 +90,7 @@ const columns = [
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-semibold text-default">Apps</h2>
+    <div class="flex items-center justify-end mb-6">
       <UButton label="New App" icon="i-lucide-plus" to="/apps/new" />
     </div>
 
@@ -108,57 +107,59 @@ const columns = [
       @action="router.push('/apps/new')"
     />
 
-    <UTable v-else :data="appsStore.items" :columns="columns">
-      <template #appSlug-cell="{ row }">
-        <button
-          type="button"
-          class="font-mono text-sm text-primary hover:underline"
-          @click="router.push(`/apps/${row.original.appSlug}/updates`)"
-        >
-          {{ row.original.appSlug }}
-        </button>
-      </template>
-      <template #description-cell="{ row }">
-        <span class="text-muted truncate max-w-xs block">{{
-          row.original.description || '—'
-        }}</span>
-      </template>
-      <template #createdAt-cell="{ row }">
-        <TimeAgo :iso="row.original.createdAt" />
-      </template>
-      <template #actions-cell="{ row }">
-        <div class="flex justify-end gap-1" @click.stop>
-          <UButton
-            icon="i-lucide-pencil"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            aria-label="Edit app"
-            @click="openEdit(row.original)"
-          />
-          <UButton
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="ghost"
-            size="xs"
-            aria-label="Delete app"
-            @click="openDelete(row.original.appSlug)"
-          />
-        </div>
-      </template>
-    </UTable>
+    <UCard v-else variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+      <UTable :data="appsStore.items" :columns="columns">
+        <template #appSlug-cell="{ row }">
+          <button
+            type="button"
+            class="font-mono text-sm text-primary hover:underline"
+            @click="router.push(`/apps/${row.original.appSlug}/updates`)"
+          >
+            {{ row.original.appSlug }}
+          </button>
+        </template>
+        <template #description-cell="{ row }">
+          <span class="text-muted truncate max-w-xs block">{{
+            row.original.description || '—'
+          }}</span>
+        </template>
+        <template #createdAt-cell="{ row }">
+          <TimeAgo :iso="row.original.createdAt" />
+        </template>
+        <template #actions-cell="{ row }">
+          <div class="flex justify-end gap-1" @click.stop>
+            <UButton
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              aria-label="Edit app"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              aria-label="Delete app"
+              @click="openDelete(row.original.appSlug)"
+            />
+          </div>
+        </template>
+      </UTable>
+    </UCard>
 
     <USlideover v-model:open="editOpen" title="Edit App">
       <template #body>
         <div class="space-y-4 p-4">
           <UFormField label="App Slug">
-            <UInput :model-value="selectedSlug ?? ''" disabled />
+            <UInput :model-value="selectedSlug ?? ''" disabled class="form-control" />
           </UFormField>
           <UFormField label="Name" required>
-            <UInput v-model="editName" />
+            <UInput v-model="editName" class="form-control" />
           </UFormField>
           <UFormField label="Description">
-            <UTextarea v-model="editDescription" :rows="3" />
+            <UTextarea v-model="editDescription" :rows="3" class="form-control" />
           </UFormField>
         </div>
       </template>

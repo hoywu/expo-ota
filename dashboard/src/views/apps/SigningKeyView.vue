@@ -162,7 +162,6 @@ const columns = [
 
 <template>
   <div>
-    <h2 class="text-2xl font-semibold text-default mb-2">Signing Key</h2>
     <p class="text-sm text-muted mb-6">
       Manage the RSA code signing key for this app. Clients with codeSigningCertificate configured
       will verify manifests.
@@ -343,7 +342,7 @@ const columns = [
     <UModal v-model:open="generateOpen" title="Generate signing key" :dismissible="false">
       <template #body>
         <UFormField label="Key ID" required hint="e.g. main">
-          <UInput v-model="generateKeyId" />
+          <UInput v-model="generateKeyId" class="form-control" />
         </UFormField>
       </template>
       <template #footer>
@@ -358,13 +357,17 @@ const columns = [
       <template #body>
         <div class="space-y-4">
           <UFormField label="Key ID" required>
-            <UInput v-model="importKeyId" />
+            <UInput v-model="importKeyId" class="form-control" />
           </UFormField>
           <UFormField label="Public key PEM" required>
-            <UTextarea v-model="importPublicPem" :rows="6" class="font-mono text-xs" />
+            <UTextarea v-model="importPublicPem" :rows="6" class="font-mono text-xs form-control" />
           </UFormField>
           <UFormField label="Private key PEM" required>
-            <UTextarea v-model="importPrivatePem" :rows="6" class="font-mono text-xs" />
+            <UTextarea
+              v-model="importPrivatePem"
+              :rows="6"
+              class="font-mono text-xs form-control"
+            />
           </UFormField>
         </div>
       </template>

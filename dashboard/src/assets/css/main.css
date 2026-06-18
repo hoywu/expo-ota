@@ -1,2 +1,32 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+:root {
+  --ui-radius: 0.375rem;
+}
+
+@layer components {
+  .form-control {
+    @apply w-full;
+  }
+
+  .dashboard-filters {
+    @apply flex flex-nowrap items-center gap-3 overflow-x-auto;
+  }
+
+  .dashboard-filter-select-sm {
+    @apply w-auto shrink-0 min-w-36;
+  }
+
+  .dashboard-filter-select-md {
+    @apply w-auto shrink-0 min-w-44;
+  }
+
+  .dashboard-filter-input {
+    @apply w-auto shrink-0 min-w-40;
+  }
+
+  .dashboard-filter-datetime {
+    @apply w-auto shrink-0 min-w-48;
+  }
+}
