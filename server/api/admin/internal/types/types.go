@@ -113,7 +113,7 @@ type ImportSigningKeyReq struct {
 	KeyId         string `json:"keyId"`
 	Algorithm     string `json:"algorithm,default=rsa-v1_5-sha256,optional"`
 	PublicKeyPem  string `json:"publicKeyPem"`
-	PrivateKeyPem string `json:"privateKeyPem,optional"`
+	PrivateKeyPem string `json:"privateKeyPem"`
 }
 
 type ListAppsResp struct {

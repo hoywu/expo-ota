@@ -28,7 +28,7 @@ type (
 	apiTokensModel interface {
 		Insert(ctx context.Context, data *ApiTokens) (sql.Result, error)
 		FindOne(ctx context.Context, id string) (*ApiTokens, error)
-		FindOneByTokenHash(ctx context.Context, tokenHash string) (*ApiTokens, error)
+		FindOneByTokenHash(ctx context.Context, tokenHash []byte) (*ApiTokens, error)
 		Update(ctx context.Context, data *ApiTokens) error
 		Delete(ctx context.Context, id string) error
 	}
@@ -43,7 +43,7 @@ type (
 		AppId      string         `db:"app_id"`
 		CreatedBy  string         `db:"created_by"`
 		Name       string         `db:"name"`
-		TokenHash  string         `db:"token_hash"`
+		TokenHash  []byte         `db:"token_hash"`
 		Scopes     pq.StringArray `db:"scopes"`
 		LastUsedAt sql.NullTime   `db:"last_used_at"`
 		ExpiresAt  sql.NullTime   `db:"expires_at"`
@@ -79,7 +79,7 @@ func (m *defaultApiTokensModel) FindOne(ctx context.Context, id string) (*ApiTok
 	}
 }
 
-func (m *defaultApiTokensModel) FindOneByTokenHash(ctx context.Context, tokenHash string) (*ApiTokens, error) {
+func (m *defaultApiTokensModel) FindOneByTokenHash(ctx context.Context, tokenHash []byte) (*ApiTokens, error) {
 	var resp ApiTokens
 	query := fmt.Sprintf("select %s from %s where token_hash = $1 limit 1", apiTokensRows, m.table)
 	err := m.conn.QueryRowCtx(ctx, &resp, query, tokenHash)

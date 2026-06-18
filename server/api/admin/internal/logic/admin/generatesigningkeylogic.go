@@ -65,7 +65,7 @@ func (l *GenerateSigningKeyLogic) GenerateSigningKey(req *types.GenerateSigningK
 		KeyId:               req.KeyId,
 		Algorithm:           signingKeyAlgorithm,
 		PublicKeyPem:        string(publicPem),
-		EncryptedPrivateKey: models.ByteaHex(encrypted),
+		EncryptedPrivateKey: encrypted,
 		EncryptionKeyId:     signingEncryptionKeyID,
 		Enabled:             true,
 	}

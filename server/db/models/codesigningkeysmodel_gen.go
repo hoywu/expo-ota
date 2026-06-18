@@ -43,7 +43,7 @@ type (
 		KeyId               string       `db:"key_id"`
 		Algorithm           string       `db:"algorithm"`
 		PublicKeyPem        string       `db:"public_key_pem"`
-		EncryptedPrivateKey string       `db:"encrypted_private_key"`
+		EncryptedPrivateKey []byte       `db:"encrypted_private_key"`
 		EncryptionKeyId     string       `db:"encryption_key_id"`
 		Enabled             bool         `db:"enabled"`
 		CreatedAt           time.Time    `db:"created_at"`

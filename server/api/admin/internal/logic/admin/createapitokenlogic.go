@@ -85,7 +85,7 @@ func (l *CreateApiTokenLogic) CreateApiToken(req *types.CreateTokenReq) (resp *t
 		AppId:     app.Id,
 		CreatedBy: actorId,
 		Name:      req.Name,
-		TokenHash: models.ByteaHex(hash[:]),
+		TokenHash: hash[:],
 		Scopes:    []string{"publish"},
 		ExpiresAt: expiresAt,
 	}

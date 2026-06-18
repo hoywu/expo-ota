@@ -159,7 +159,7 @@ func (c *MockApiTokensModelFindOneCall) DoAndReturn(f func(context.Context, stri
 }
 
 // FindOneByTokenHash mocks base method.
-func (m *MockApiTokensModel) FindOneByTokenHash(ctx context.Context, tokenHash string) (*ApiTokens, error) {
+func (m *MockApiTokensModel) FindOneByTokenHash(ctx context.Context, tokenHash []byte) (*ApiTokens, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindOneByTokenHash", ctx, tokenHash)
 	ret0, _ := ret[0].(*ApiTokens)
@@ -186,13 +186,13 @@ func (c *MockApiTokensModelFindOneByTokenHashCall) Return(arg0 *ApiTokens, arg1 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockApiTokensModelFindOneByTokenHashCall) Do(f func(context.Context, string) (*ApiTokens, error)) *MockApiTokensModelFindOneByTokenHashCall {
+func (c *MockApiTokensModelFindOneByTokenHashCall) Do(f func(context.Context, []byte) (*ApiTokens, error)) *MockApiTokensModelFindOneByTokenHashCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApiTokensModelFindOneByTokenHashCall) DoAndReturn(f func(context.Context, string) (*ApiTokens, error)) *MockApiTokensModelFindOneByTokenHashCall {
+func (c *MockApiTokensModelFindOneByTokenHashCall) DoAndReturn(f func(context.Context, []byte) (*ApiTokens, error)) *MockApiTokensModelFindOneByTokenHashCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

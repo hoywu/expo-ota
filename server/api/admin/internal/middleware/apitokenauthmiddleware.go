@@ -69,7 +69,7 @@ func (m *ApiTokenAuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc 
 
 func (m *ApiTokenAuthMiddleware) validate(ctx context.Context, r *http.Request, plaintext string) (*models.ApiTokens, error) {
 	sum := sha256.Sum256([]byte(plaintext))
-	token, err := m.svcCtx.ApiTokensModel.FindOneByTokenHash(ctx, models.ByteaHex(sum[:]))
+	token, err := m.svcCtx.ApiTokensModel.FindOneByTokenHash(ctx, sum[:])
 	if err != nil {
 		return nil, errInvalidApiToken
 	}

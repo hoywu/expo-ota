@@ -228,7 +228,7 @@ func TestManifestSignsNoUpdateAvailableDirective(t *testing.T) {
 	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
 		Return(&models.Updates{Id: "u-1", ManifestUuid: uuid, ManifestSnapshot: testSnapshot}, nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").
-		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: string(ciphertext)}, nil)
+		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: ciphertext}, nil)
 
 	req := baseManifestReq()
 	req.CurrentUpdateId = uuid
@@ -310,7 +310,7 @@ func TestManifestSignsWhenKeyEnabled(t *testing.T) {
 	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
 		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").
-		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: string(ciphertext)}, nil)
+		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: ciphertext}, nil)
 
 	req := baseManifestReq()
 	req.Accept = mediaExpoJSON
@@ -382,7 +382,7 @@ func TestManifestErrorsWhenExpectedSignaturePrivateKeyMissing(t *testing.T) {
 	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
 		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").
-		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: `\x`}, nil)
+		Return(&models.CodeSigningKeys{KeyId: "main", Algorithm: signingKeyAlgorithm, Enabled: true, EncryptedPrivateKey: nil}, nil)
 
 	req := baseManifestReq()
 	req.ExpectSignature = `sig, keyid="main", alg="rsa-v1_5-sha256"`

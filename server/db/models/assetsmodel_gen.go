@@ -27,7 +27,7 @@ type (
 	assetsModel interface {
 		Insert(ctx context.Context, data *Assets) (sql.Result, error)
 		FindOne(ctx context.Context, id string) (*Assets, error)
-		FindOneByAppIdSha256(ctx context.Context, appId string, sha256 string) (*Assets, error)
+		FindOneByAppIdSha256(ctx context.Context, appId string, sha256 []byte) (*Assets, error)
 		Update(ctx context.Context, data *Assets) error
 		Delete(ctx context.Context, id string) error
 	}
@@ -40,7 +40,7 @@ type (
 	Assets struct {
 		Id           string         `db:"id"`
 		AppId        string         `db:"app_id"`
-		Sha256       string         `db:"sha256"`
+		Sha256       []byte         `db:"sha256"`
 		Sha256B64url string         `db:"sha256_b64url"`
 		SizeBytes    int64          `db:"size_bytes"`
 		ContentType  string         `db:"content_type"`
@@ -77,7 +77,7 @@ func (m *defaultAssetsModel) FindOne(ctx context.Context, id string) (*Assets, e
 	}
 }
 
-func (m *defaultAssetsModel) FindOneByAppIdSha256(ctx context.Context, appId string, sha256 string) (*Assets, error) {
+func (m *defaultAssetsModel) FindOneByAppIdSha256(ctx context.Context, appId string, sha256 []byte) (*Assets, error) {
 	var resp Assets
 	query := fmt.Sprintf("select %s from %s where app_id = $1 and sha256 = $2 limit 1", assetsRows, m.table)
 	err := m.conn.QueryRowCtx(ctx, &resp, query, appId, sha256)

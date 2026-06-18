@@ -176,7 +176,7 @@ func (l *ManifestLogic) signIfExpected(appId string, manifestBytes []byte, expec
 		return "", errSigningUnavailable
 	}
 
-	ciphertext := []byte(key.EncryptedPrivateKey)
+	ciphertext := key.EncryptedPrivateKey
 	plain, err := decryptPrivateKeyPem(l.svcCtx.SigningEncryptionKey, ciphertext)
 	if err != nil {
 		l.Errorf("signing key %s enabled but private key unusable: %v", key.KeyId, err)

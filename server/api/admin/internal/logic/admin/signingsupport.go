@@ -23,9 +23,6 @@ const (
 	// signingEncryptionKeyID identifies the env-provided AES key that
 	// encrypted code_signing_keys.encrypted_private_key.
 	signingEncryptionKeyID = "env-v1"
-	// emptyBytea is the hex-bytea literal for zero bytes (imported keys
-	// without a private key).
-	emptyBytea = `\x`
 )
 
 var (
@@ -34,6 +31,7 @@ var (
 		"signing key must be disabled before deletion")
 	errSigningKeyExists   = httperr.New(http.StatusConflict, "an enabled signing key already exists; disable it first")
 	errInvalidPublicKey   = httperr.New(http.StatusBadRequest, "publicKeyPem is not a valid PEM-encoded RSA public key")
+	errPrivateKeyRequired = httperr.New(http.StatusBadRequest, "privateKeyPem is required")
 	errInvalidPrivateKey  = httperr.New(http.StatusBadRequest, "privateKeyPem is not a valid PEM-encoded RSA private key matching the public key")
 	errKeyIdEmpty         = httperr.New(http.StatusBadRequest, "keyId must not be empty")
 	errUnsupportedAlg     = httperr.New(http.StatusBadRequest, "algorithm must be rsa-v1_5-sha256")
@@ -147,6 +145,6 @@ func signingKeyToResp(key *models.CodeSigningKeys) *types.SigningKeyResp {
 		Enabled:       key.Enabled,
 		CreatedAt:     formatTime(key.CreatedAt),
 		DisabledAt:    formatNullTime(key.DisabledAt),
-		HasPrivateKey: key.EncryptedPrivateKey != "" && key.EncryptedPrivateKey != emptyBytea,
+		HasPrivateKey: len(key.EncryptedPrivateKey) > 0,
 	}
 }

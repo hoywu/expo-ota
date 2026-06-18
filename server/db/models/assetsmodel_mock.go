@@ -198,7 +198,7 @@ func (c *MockAssetsModelFindOneCall) DoAndReturn(f func(context.Context, string)
 }
 
 // FindOneByAppIdSha256 mocks base method.
-func (m *MockAssetsModel) FindOneByAppIdSha256(ctx context.Context, appId, sha256 string) (*Assets, error) {
+func (m *MockAssetsModel) FindOneByAppIdSha256(ctx context.Context, appId string, sha256 []byte) (*Assets, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindOneByAppIdSha256", ctx, appId, sha256)
 	ret0, _ := ret[0].(*Assets)
@@ -225,13 +225,13 @@ func (c *MockAssetsModelFindOneByAppIdSha256Call) Return(arg0 *Assets, arg1 erro
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockAssetsModelFindOneByAppIdSha256Call) Do(f func(context.Context, string, string) (*Assets, error)) *MockAssetsModelFindOneByAppIdSha256Call {
+func (c *MockAssetsModelFindOneByAppIdSha256Call) Do(f func(context.Context, string, []byte) (*Assets, error)) *MockAssetsModelFindOneByAppIdSha256Call {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockAssetsModelFindOneByAppIdSha256Call) DoAndReturn(f func(context.Context, string, string) (*Assets, error)) *MockAssetsModelFindOneByAppIdSha256Call {
+func (c *MockAssetsModelFindOneByAppIdSha256Call) DoAndReturn(f func(context.Context, string, []byte) (*Assets, error)) *MockAssetsModelFindOneByAppIdSha256Call {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

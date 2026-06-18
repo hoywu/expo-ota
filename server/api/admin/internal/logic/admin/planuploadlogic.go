@@ -59,7 +59,7 @@ func (l *PlanUploadLogic) PlanUpload(req *types.PlanReq) (resp *types.PlanResp, 
 		storageKey := storage.AssetStorageKey(app.AppSlug, asset.Sha256)
 		finalUrl := l.svcCtx.Store.PublicURL(storageKey)
 
-		_, err = l.svcCtx.AssetsModel.FindOneByAppIdSha256(l.ctx, app.Id, models.ByteaHex(rawSha))
+		_, err = l.svcCtx.AssetsModel.FindOneByAppIdSha256(l.ctx, app.Id, rawSha)
 		if err == nil {
 			resp.Reuse = append(resp.Reuse, types.PlanReuseItem{
 				Key:      asset.Key,

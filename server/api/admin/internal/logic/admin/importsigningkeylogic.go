@@ -47,27 +47,25 @@ func (l *ImportSigningKeyLogic) ImportSigningKey(req *types.ImportSigningKeyReq)
 		return nil, err
 	}
 
+	if req.PrivateKeyPem == "" {
+		return nil, errPrivateKeyRequired
+	}
+
 	publicKey, err := parseRsaPublicKey([]byte(req.PublicKeyPem))
 	if err != nil {
 		return nil, err
 	}
 
-	// Private key is optional: without it the server cannot sign manifests
-	// (HasPrivateKey=false), but the public key remains downloadable.
-	encryptedPrivateKey := emptyBytea
-	if req.PrivateKeyPem != "" {
-		privateKey, err := parseRsaPrivateKey([]byte(req.PrivateKeyPem))
-		if err != nil {
-			return nil, err
-		}
-		if privateKey.PublicKey.N.Cmp(publicKey.N) != 0 {
-			return nil, errInvalidPrivateKey
-		}
-		encrypted, err := encryptPrivateKeyPem(l.svcCtx.SigningEncryptionKey, []byte(req.PrivateKeyPem))
-		if err != nil {
-			return nil, err
-		}
-		encryptedPrivateKey = models.ByteaHex(encrypted)
+	privateKey, err := parseRsaPrivateKey([]byte(req.PrivateKeyPem))
+	if err != nil {
+		return nil, err
+	}
+	if privateKey.PublicKey.N.Cmp(publicKey.N) != 0 {
+		return nil, errInvalidPrivateKey
+	}
+	encryptedPrivateKey, err := encryptPrivateKeyPem(l.svcCtx.SigningEncryptionKey, []byte(req.PrivateKeyPem))
+	if err != nil {
+		return nil, err
 	}
 
 	id, err := newUUID()

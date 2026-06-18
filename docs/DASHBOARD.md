@@ -521,7 +521,7 @@ disabled → 可 Delete（硬删）
    - `POST .../signing-key/generate`
 
 4. **Import**（无 enabled key 时）
-   - `keyId`、`publicKeyPem`、可选 `privateKeyPem`
+   - `keyId`、`publicKeyPem`、`privateKeyPem`（三者均必填）
    - `POST .../signing-key/import`
 
 5. **Enable / Disable 确认**

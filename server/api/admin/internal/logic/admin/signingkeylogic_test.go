@@ -5,7 +5,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"strings"
 	"testing"
@@ -51,10 +50,7 @@ func TestGenerateSigningKeyStoresEncryptedPrivateKey(t *testing.T) {
 	}
 
 	// The stored ciphertext must decrypt back to a PEM private key.
-	raw, err := hex.DecodeString(strings.TrimPrefix(inserted.EncryptedPrivateKey, `\x`))
-	if err != nil {
-		t.Fatalf("EncryptedPrivateKey is not hex bytea: %v", err)
-	}
+	raw := inserted.EncryptedPrivateKey
 	block, _ := aes.NewCipher(svcCtx.SigningEncryptionKey)
 	gcm, _ := cipher.NewGCM(block)
 	plaintext, err := gcm.Open(nil, raw[:gcm.NonceSize()], raw[gcm.NonceSize():], nil)
@@ -110,37 +106,24 @@ func TestImportSigningKeyRejectsMismatchedPair(t *testing.T) {
 	}
 }
 
-func TestImportSigningKeyPublicOnly(t *testing.T) {
+func TestImportSigningKeyRejectsMissingPrivateKey(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newFullTestSvcCtx(ctrl)
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.CodeSigningKeys.EXPECT().FindOneByAppId(gomock.Any(), "app-1").Return(nil, models.ErrNotFound)
 	m.CodeSigningKeys.EXPECT().FindOneByAppIdKeyId(gomock.Any(), "app-1", "main").Return(nil, models.ErrNotFound)
-	var inserted *models.CodeSigningKeys
-	m.CodeSigningKeys.EXPECT().Insert(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, key *models.CodeSigningKeys) (sql.Result, error) {
-			inserted = key
-			return nil, nil
-		})
-	m.CodeSigningKeys.EXPECT().FindOne(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, id string) (*models.CodeSigningKeys, error) {
-			return inserted, nil
-		})
 
 	publicPem, _, err := generateRsaKeyPair()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err := NewImportSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).ImportSigningKey(&types.ImportSigningKeyReq{
+	_, err = NewImportSigningKeyLogic(ctxWithUserID("user-1"), svcCtx).ImportSigningKey(&types.ImportSigningKeyReq{
 		AppSlug: "my-app", KeyId: "main", PublicKeyPem: string(publicPem),
 	})
-	if err != nil {
-		t.Fatalf("ImportSigningKey returned error: %v", err)
-	}
-	if resp.HasPrivateKey {
-		t.Error("HasPrivateKey = true, want false")
+	if !errors.Is(err, errPrivateKeyRequired) {
+		t.Errorf("err = %v, want errPrivateKeyRequired", err)
 	}
 }
 

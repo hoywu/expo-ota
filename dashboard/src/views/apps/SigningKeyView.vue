@@ -73,13 +73,19 @@ async function generate(): Promise<void> {
 }
 
 async function importKey(): Promise<void> {
-  if (!importKeyId.value.trim() || !importPublicPem.value.trim()) return;
+  if (
+    !importKeyId.value.trim() ||
+    !importPublicPem.value.trim() ||
+    !importPrivatePem.value.trim()
+  ) {
+    return;
+  }
   actionLoading.value = true;
   try {
     await signingApi.importSigningKey(appSlug.value, {
       keyId: importKeyId.value.trim(),
       publicKeyPem: importPublicPem.value.trim(),
-      privateKeyPem: importPrivatePem.value.trim() || undefined,
+      privateKeyPem: importPrivatePem.value.trim(),
     });
     importOpen.value = false;
     toast.add({ title: 'Signing key imported', color: 'success', duration: 3000 });
@@ -357,7 +363,7 @@ const columns = [
           <UFormField label="Public key PEM" required>
             <UTextarea v-model="importPublicPem" :rows="6" class="font-mono text-xs" />
           </UFormField>
-          <UFormField label="Private key PEM (optional)">
+          <UFormField label="Private key PEM" required>
             <UTextarea v-model="importPrivatePem" :rows="6" class="font-mono text-xs" />
           </UFormField>
         </div>
@@ -365,7 +371,14 @@ const columns = [
       <template #footer>
         <div class="flex justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="outline" @click="importOpen = false" />
-          <UButton label="Import" :loading="actionLoading" @click="importKey" />
+          <UButton
+            label="Import"
+            :loading="actionLoading"
+            :disabled="
+              !importKeyId.trim() || !importPublicPem.trim() || !importPrivatePem.trim()
+            "
+            @click="importKey"
+          />
         </div>
       </template>
     </UModal>

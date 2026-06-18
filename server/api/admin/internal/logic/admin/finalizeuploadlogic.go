@@ -229,7 +229,7 @@ func (l *FinalizeUploadLogic) upsertAssets(app *models.Apps, assets []types.Plan
 		err = l.svcCtx.AssetsModel.InsertIgnoreConflict(l.ctx, &models.Assets{
 			Id:           id,
 			AppId:        app.Id,
-			Sha256:       models.ByteaHex(rawSha),
+			Sha256:       rawSha,
 			Sha256B64url: asset.Sha256,
 			SizeBytes:    asset.Size,
 			ContentType:  asset.ContentType,
@@ -240,7 +240,7 @@ func (l *FinalizeUploadLogic) upsertAssets(app *models.Apps, assets []types.Plan
 			return nil, err
 		}
 
-		row, err := l.svcCtx.AssetsModel.FindOneByAppIdSha256(l.ctx, app.Id, models.ByteaHex(rawSha))
+		row, err := l.svcCtx.AssetsModel.FindOneByAppIdSha256(l.ctx, app.Id, rawSha)
 		if err != nil {
 			return nil, err
 		}

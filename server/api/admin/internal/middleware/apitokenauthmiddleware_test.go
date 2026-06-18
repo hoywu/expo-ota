@@ -30,9 +30,9 @@ func newMwSvcCtx(tokens models.ApiTokensModel, apps models.AppsModel) *svc.Servi
 	return &svc.ServiceContext{Config: c, ApiTokensModel: tokens, AppsModel: apps}
 }
 
-func hashHex(plaintext string) string {
+func tokenHash(plaintext string) []byte {
 	sum := sha256.Sum256([]byte(plaintext))
-	return models.ByteaHex(sum[:])
+	return sum[:]
 }
 
 func runHandle(t *testing.T, tokens models.ApiTokensModel, apps models.AppsModel, method, path, authHeader string) (called bool, gotAuth, gotUserID string, rec *httptest.ResponseRecorder) {
@@ -60,7 +60,7 @@ func TestApiTokenAuthAcceptsValidTokenOnCiUpload(t *testing.T) {
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_validtoken"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
+	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), tokenHash(plaintext)).
 		Return(&models.ApiTokens{Id: "tok-1", AppId: "app-1", CreatedBy: "user-9", Scopes: []string{"publish"}}, nil)
 	apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").
 		Return(&models.Apps{Id: "app-1", AppSlug: "my-app"}, nil)
@@ -114,7 +114,7 @@ func TestApiTokenAuthRejectsWrongApp(t *testing.T) {
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_validtoken"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
+	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), tokenHash(plaintext)).
 		Return(&models.ApiTokens{Id: "tok-1", AppId: "app-1", CreatedBy: "user-9", Scopes: []string{"publish"}}, nil)
 	apps.EXPECT().FindOneByAppSlug(gomock.Any(), "other-app").
 		Return(&models.Apps{Id: "app-2", AppSlug: "other-app"}, nil)
@@ -134,7 +134,7 @@ func TestApiTokenAuthRejectsMissingPublishScope(t *testing.T) {
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_noscope"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
+	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), tokenHash(plaintext)).
 		Return(&models.ApiTokens{Id: "tok-1", AppId: "app-1", CreatedBy: "user-9"}, nil)
 
 	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
@@ -152,7 +152,7 @@ func TestApiTokenAuthRejectsRevoked(t *testing.T) {
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_revoked"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
+	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), tokenHash(plaintext)).
 		Return(&models.ApiTokens{RevokedAt: sql.NullTime{Time: time.Now(), Valid: true}}, nil)
 
 	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
@@ -170,7 +170,7 @@ func TestApiTokenAuthRejectsExpired(t *testing.T) {
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_expired"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
+	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), tokenHash(plaintext)).
 		Return(&models.ApiTokens{ExpiresAt: sql.NullTime{Time: time.Now().Add(-time.Hour), Valid: true}}, nil)
 
 	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)
@@ -188,7 +188,7 @@ func TestApiTokenAuthRejectsUnknown(t *testing.T) {
 	apps := models.NewMockAppsModel(ctrl)
 
 	plaintext := "ota_pat_unknown"
-	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), hashHex(plaintext)).
+	tokens.EXPECT().FindOneByTokenHash(gomock.Any(), tokenHash(plaintext)).
 		Return(nil, models.ErrNotFound)
 
 	called, _, _, rec := runHandle(t, tokens, apps, http.MethodPost, "/api/admin/apps/my-app/uploads/plan", "Bearer "+plaintext)

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -40,7 +41,7 @@ func TestCreateApiTokenReturnsPlaintextOnce(t *testing.T) {
 		t.Errorf("token format invalid: %q", resp.Token)
 	}
 	hash := sha256.Sum256([]byte(resp.Token))
-	if inserted.TokenHash != models.ByteaHex(hash[:]) {
+	if !bytes.Equal(inserted.TokenHash, hash[:]) {
 		t.Error("stored token hash does not match sha256 of plaintext")
 	}
 	if len(inserted.Scopes) != 1 || inserted.Scopes[0] != "publish" {

@@ -36,9 +36,9 @@ func TestPlanUploadSplitsMissingAndReuse(t *testing.T) {
 	imgKey := md5Hex("img")
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
-	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", bundleRaw).
 		Return(nil, models.ErrNotFound)
-	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(imgRaw)).
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", imgRaw).
 		Return(&models.Assets{Id: "asset-img"}, nil)
 
 	resp, err := NewPlanUploadLogic(ctxWithUserID("user-1"), svcCtx).PlanUpload(&types.PlanReq{
@@ -78,7 +78,7 @@ func TestPlanUploadRejectsBadMD5KeyForMissingAsset(t *testing.T) {
 
 	bundleSha, bundleRaw := shaB64url("bundle")
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
-	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", bundleRaw).
 		Return(nil, models.ErrNotFound)
 
 	_, err := NewPlanUploadLogic(ctxWithUserID("user-1"), svcCtx).PlanUpload(&types.PlanReq{
@@ -155,13 +155,13 @@ func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 
 	m.Assets.EXPECT().InsertIgnoreConflict(gomock.Any(), gomock.Any()).Return(nil).Times(2)
-	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", bundleRaw).
 		Return(&models.Assets{
 			Id: "asset-bundle", AppId: "app-1", Sha256B64url: bundleSha,
 			SizeBytes: 100, ContentType: "application/javascript",
 			StorageKey: "apps/my-app/assets/" + bundleSha,
 		}, nil)
-	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(imgRaw)).
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", imgRaw).
 		Return(&models.Assets{
 			Id: "asset-img", AppId: "app-1", Sha256B64url: imgSha,
 			SizeBytes: 50, ContentType: "image/png",
@@ -241,7 +241,7 @@ func TestFinalizeUploadRejectsDuplicateManifestUuid(t *testing.T) {
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.Assets.EXPECT().InsertIgnoreConflict(gomock.Any(), gomock.Any()).Return(nil)
-	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", models.ByteaHex(bundleRaw)).
+	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", bundleRaw).
 		Return(&models.Assets{
 			Id: "asset-bundle", AppId: "app-1", Sha256B64url: bundleSha,
 			SizeBytes: 100, ContentType: "application/javascript",

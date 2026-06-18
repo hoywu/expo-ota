@@ -177,7 +177,7 @@ export interface ImportSigningKeyReq {
   keyId: string;
   algorithm?: string;
   publicKeyPem: string;
-  privateKeyPem?: string;
+  privateKeyPem: string;
 }
 
 export interface PatchSigningKeyReq {
