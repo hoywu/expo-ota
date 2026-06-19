@@ -46,3 +46,4 @@ go.work.sum
 .trae/
 
 node_modules
+/*.local.sh
