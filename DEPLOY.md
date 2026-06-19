@@ -85,13 +85,15 @@ docker compose up -d --build
 
 ### 2.1 本地构建镜像并推送至服务器（无需拷贝源码）
 
-若希望在本地或 CI 完成编译，服务器只拉取镜像运行，无需拷贝整个 Git 仓库或安装 Go 工具链。后端所有服务（`migrate`、`protocol-api`、`admin-api`、`asset-gc`）共用同一镜像 `expo-ota-api`。
+若希望在本地或 CI 完成编译，服务器只拉取镜像运行，无需拷贝整个 Git 仓库或安装 Go 工具链。后端所有服务（`migrate`、`protocol-api`、`admin-api`、`asset-gc`）共用同一镜像。
+
+`docker-compose.yml` 中写的是 `image: expo-ota-api`，等价于 **`expo-ota-api:latest`**。使用 `--no-build` 前，服务器上必须已存在该 tag，否则 compose 会尝试从 Docker Hub 拉取（不存在则报 `No such image: expo-ota-api:latest`）。
 
 **本地构建并打标签：**
 
 ```bash
 # 在项目根目录
-docker build -t expo-ota-api:1.0.0 -f Dockerfile --target api .
+docker build -t expo-ota-api:1.0.0 -t expo-ota-api:latest -f Dockerfile --target api .
 ```
 
 **方式 A：推送到镜像仓库（推荐）**
@@ -118,7 +120,8 @@ docker push "$REGISTRY:$TAG"
 ```bash
 cd /opt/expo-ota
 docker pull "$REGISTRY:$TAG"
-docker tag "$REGISTRY:$TAG" expo-ota-api
+docker tag "$REGISTRY:$TAG" expo-ota-api:latest
+docker image inspect expo-ota-api:latest   # 确认镜像存在
 docker compose up -d --no-build
 ```
 
@@ -130,14 +133,14 @@ docker compose up -d --no-build
 
 ```bash
 # 本地
-docker save expo-ota-api:1.0.0 | gzip > expo-ota-api-1.0.0.tar.gz
-scp expo-ota-api-1.0.0.tar.gz docker-compose.yml server:/opt/expo-ota/
+docker save expo-ota-api:latest | gzip > expo-ota-api.tar.gz
+scp expo-ota-api.tar.gz docker-compose.yml server:/opt/expo-ota/
 ```
 
 ```bash
 # 服务器（.env 需事先放好）
 cd /opt/expo-ota
-gunzip -c expo-ota-api-1.0.0.tar.gz | docker load
+gunzip -c expo-ota-api.tar.gz | docker load
 docker compose up -d --no-build
 ```
 
