@@ -97,3 +97,7 @@ infra-clear:
 
 infra-log:
 	docker compose -f server/deploy/docker-compose.infra.yml logs -f
+
+# Build
+build-dashboard:
+	cd dashboard && bun run build
