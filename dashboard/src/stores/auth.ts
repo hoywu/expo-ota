@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import * as authApi from '@/api/auth';
-import { clearSession, getAccessToken, setTokens } from '@/api/client';
+import { clearSession, ensureFreshToken, getAccessToken, setTokens } from '@/api/client';
 import type { MeResp } from '@/types/admin';
 import { normalizeUsername } from '@/utils/validation';
 
@@ -42,7 +42,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function refresh(): Promise<boolean> {
-    const { ensureFreshToken } = await import('@/api/client');
     const ok = await ensureFreshToken();
     if (!ok) {
       user.value = null;
