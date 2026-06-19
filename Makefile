@@ -6,7 +6,7 @@ MAKEFLAGS += --no-print-directory
 .ONESHELL:
 .PHONY: gen-admin-api gen-protocol-api new-sql migrate gen-model dev dev-admin dev-protocol dev-dashboard format asset-gc test infra-up infra-down infra-clear infra-log
 
-SERVER_ENV_FILE := server/deploy/.env
+SERVER_ENV_FILE := .env
 define with_server_env
 	@( set -a; . $(SERVER_ENV_FILE); set +a; cd server && $(1) )
 endef
@@ -87,16 +87,16 @@ test:
 
 # Docker infrastructure (dev)
 infra-up:
-	docker compose -f server/deploy/docker-compose.infra.yml up -d --wait
+	docker compose -f docker-compose.infra.yml up -d --wait
 
 infra-down:
-	docker compose -f server/deploy/docker-compose.infra.yml down
+	docker compose -f docker-compose.infra.yml down
 
 infra-clear:
-	docker compose -f server/deploy/docker-compose.infra.yml down --volumes
+	docker compose -f docker-compose.infra.yml down --volumes
 
 infra-log:
-	docker compose -f server/deploy/docker-compose.infra.yml logs -f
+	docker compose -f docker-compose.infra.yml logs -f
 
 # Build
 build-dashboard:
