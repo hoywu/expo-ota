@@ -1,0 +1,115 @@
+name: expo-ota
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-expo_ota}
+      TZ: Asia/Shanghai
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    image: expo-ota-api
+    restart: "no"
+    command: ["./migrate"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
+  protocol-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    image: expo-ota-api
+    restart: unless-stopped
+    command: ["./protocol-api", "-f", "./etc/protocol-api.yaml"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # expose:
+    #   - "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  admin-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    image: expo-ota-api
+    restart: unless-stopped
+    command: ["./admin-api", "-f", "./etc/admin-api.yaml"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # expose:
+    #   - "8081"
+    ports:
+      - "127.0.0.1:8081:8081"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8081/api/admin/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  asset-gc:
+    profiles:
+      - maintenance
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    image: expo-ota-api
+    restart: "no"
+    command: ["./asset-gc"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  pg_data:
+    name: expo_ota_pg_data
+    driver: local
+
+networks:
+  internal:
+    driver: bridge
