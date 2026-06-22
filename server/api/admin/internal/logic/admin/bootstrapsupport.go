@@ -7,7 +7,7 @@ import (
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/db/models"
 
-	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logc"
 )
 
 // BootstrapInitialAdmin creates the first admin user from the configured
@@ -48,6 +48,6 @@ func BootstrapInitialAdmin(ctx context.Context, svcCtx *svc.ServiceContext) erro
 		return err
 	}
 
-	logx.WithContext(ctx).Infof("bootstrapped initial admin user %q", username)
+	logc.Infof(ctx, "bootstrapped initial admin user %q", username)
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/db/models"
 
-	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
@@ -71,12 +72,17 @@ func (m *ApiTokenAuthMiddleware) validate(ctx context.Context, r *http.Request, 
 	sum := sha256.Sum256([]byte(plaintext))
 	token, err := m.svcCtx.ApiTokensModel.FindOneByTokenHash(ctx, sum[:])
 	if err != nil {
+		if !errors.Is(err, models.ErrNotFound) {
+			logc.Errorf(ctx, "lookup api token by hash failed: %v", err)
+		}
 		return nil, errInvalidApiToken
 	}
 	if token.RevokedAt.Valid {
+		logc.Infof(ctx, "revoked api token %s used", token.Id)
 		return nil, errInvalidApiToken
 	}
 	if token.ExpiresAt.Valid && !token.ExpiresAt.Time.After(time.Now()) {
+		logc.Infof(ctx, "expired api token %s used", token.Id)
 		return nil, errInvalidApiToken
 	}
 	if err := m.authorize(ctx, r, token); err != nil {
@@ -85,7 +91,7 @@ func (m *ApiTokenAuthMiddleware) validate(ctx context.Context, r *http.Request, 
 
 	token.LastUsedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	if uerr := m.svcCtx.ApiTokensModel.Update(ctx, token); uerr != nil {
-		logx.WithContext(ctx).Errorf("update api token last_used_at failed: %v", uerr)
+		logc.Errorf(ctx, "update api token last_used_at failed: %v", uerr)
 	}
 
 	return token, nil
@@ -101,9 +107,13 @@ func (m *ApiTokenAuthMiddleware) authorize(ctx context.Context, r *http.Request,
 
 	app, err := m.svcCtx.AppsModel.FindOneByAppSlug(ctx, appSlug)
 	if err != nil {
+		if !errors.Is(err, models.ErrNotFound) {
+			logc.Errorf(ctx, "lookup app by slug during api token auth failed: %v", err)
+		}
 		return errApiTokenForbidden
 	}
 	if app.DeletedAt.Valid || app.Id != token.AppId {
+		logc.Infof(ctx, "api token %s for app %s denied access to app %s", token.Id, token.AppId, appSlug)
 		return errApiTokenForbidden
 	}
 	return nil

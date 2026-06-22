@@ -10,7 +10,7 @@ import (
 
 	"github.com/hoywu/expo-ota/server/api/admin/internal/types"
 	"github.com/hoywu/expo-ota/server/db/models"
-	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logc"
 )
 
 // statusError is a domain error carrying the HTTP status code it should be
@@ -56,7 +56,7 @@ func ToErrorResponse(ctx context.Context, err error) (int, any) {
 		}
 	}
 
-	logx.WithContext(ctx).Errorf("internal server error: %v", err)
+	logc.Errorf(ctx, "internal server error: %v", err)
 
 	return http.StatusInternalServerError, &types.ErrorResp{
 		Code:    http.StatusText(http.StatusInternalServerError),

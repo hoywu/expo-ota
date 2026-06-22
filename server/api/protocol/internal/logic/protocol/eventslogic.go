@@ -6,6 +6,7 @@ package protocol
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -65,8 +66,11 @@ func (l *EventsLogic) Events(req *types.EventReq) (resp *types.EmptyResp, err er
 		updateId = ""
 	}
 	if manifestUuid != "" {
-		if update, err := l.svcCtx.UpdatesModel.FindOneByAppIdManifestUuid(l.ctx, app.Id, manifestUuid); err == nil {
+		update, ferr := l.svcCtx.UpdatesModel.FindOneByAppIdManifestUuid(l.ctx, app.Id, manifestUuid)
+		if ferr == nil {
 			updateId = update.Id
+		} else if !errors.Is(ferr, models.ErrNotFound) {
+			l.Errorf("resolve manifest uuid %s to update failed: %v", manifestUuid, ferr)
 		}
 	}
 

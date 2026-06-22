@@ -9,7 +9,7 @@ import (
 	"github.com/hoywu/expo-ota/server/api/admin/internal/reqmeta"
 	"github.com/hoywu/expo-ota/server/api/admin/internal/svc"
 	"github.com/hoywu/expo-ota/server/db/models"
-	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logc"
 )
 
 // writeAudit records an admin write operation (§11.5). It is best-effort:
@@ -39,7 +39,7 @@ func writeAudit(ctx context.Context, svcCtx *svc.ServiceContext, action, appId, 
 	}
 
 	if _, err := svcCtx.AuditLogsModel.Insert(ctx, row); err != nil {
-		logx.WithContext(ctx).Errorf("write audit log failed: action=%s err=%v", action, err)
+		logc.Errorf(ctx, "write audit log failed: action=%s err=%v", action, err)
 	}
 }
 
