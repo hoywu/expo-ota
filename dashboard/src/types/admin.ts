@@ -241,3 +241,14 @@ export interface ListAuditLogsParams {
   limit?: number;
   cursor?: string;
 }
+
+export interface SystemStatsResp {
+  heapAllocBytes: number;
+  heapInUseBytes: number;
+  heapSysBytes: number;
+  stackInUseBytes: number;
+  numGC: number;
+  numGoroutine: number;
+  goVersion: string;
+  uptimeSeconds: number;
+}

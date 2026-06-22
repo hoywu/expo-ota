@@ -112,13 +112,13 @@ type (
 		FileExt string `json:"fileExt,optional"`
 	}
 	UpdateStatsResp {
-		RequestedDevices          int `json:"requestedDevices"`
-		RequestsWithoutDeviceId   int `json:"requestsWithoutDeviceId"`
-		SucceededDevices          int `json:"succeededDevices"`
-		FailedDevices             int `json:"failedDevices"`
-		DurationMinMs             int `json:"durationMinMs,optional"`
-		DurationMaxMs             int `json:"durationMaxMs,optional"`
-		DurationAvgMs             int `json:"durationAvgMs,optional"`
+		RequestedDevices        int `json:"requestedDevices"`
+		RequestsWithoutDeviceId int `json:"requestsWithoutDeviceId"`
+		SucceededDevices        int `json:"succeededDevices"`
+		FailedDevices           int `json:"failedDevices"`
+		DurationMinMs           int `json:"durationMinMs,optional"`
+		DurationMaxMs           int `json:"durationMaxMs,optional"`
+		DurationAvgMs           int `json:"durationAvgMs,optional"`
 	}
 	UpdateListItem {
 		Id             string `json:"id"`
@@ -361,6 +361,23 @@ type (
 )
 
 // =====================================================================
+// 系统观测 (Observability Slice 1)
+// =====================================================================
+type (
+	// SystemStatsResp 返回 admin-api 进程的 Go runtime 实时指标
+	SystemStatsResp {
+		HeapAllocBytes  int64  `json:"heapAllocBytes"`
+		HeapInUseBytes  int64  `json:"heapInUseBytes"`
+		HeapSysBytes    int64  `json:"heapSysBytes"`
+		StackInUseBytes int64  `json:"stackInUseBytes"`
+		NumGC           int64  `json:"numGC"`
+		NumGoroutine    int64  `json:"numGoroutine"`
+		GoVersion       string `json:"goVersion"`
+		UptimeSeconds   int64  `json:"uptimeSeconds"`
+	}
+)
+
+// =====================================================================
 // Service Block 1: 公开端点（无鉴权）
 // login / healthz / readyz 走 Nginx 限速（§11.3），不需要 JWT。
 // =====================================================================
@@ -485,6 +502,10 @@ service admin-api {
 	// —— Audit Log (6.8) ——
 	@handler ListAuditLogs
 	get /apps/:appSlug/audit-logs (ListAuditLogsReq) returns (ListAuditLogsResp)
+
+	// —— System Observability (Slice 1) ——
+	@handler SystemStats
+	get /system/stats returns (SystemStatsResp)
 }
 
 // =====================================================================

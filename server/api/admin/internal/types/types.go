@@ -268,6 +268,17 @@ type SigningKeyResp struct {
 	HasPrivateKey bool   `json:"hasPrivateKey"`
 }
 
+type SystemStatsResp struct {
+	HeapAllocBytes  int64  `json:"heapAllocBytes"`
+	HeapInUseBytes  int64  `json:"heapInUseBytes"`
+	HeapSysBytes    int64  `json:"heapSysBytes"`
+	StackInUseBytes int64  `json:"stackInUseBytes"`
+	NumGC           int64  `json:"numGC"`
+	NumGoroutine    int64  `json:"numGoroutine"`
+	GoVersion       string `json:"goVersion"`
+	UptimeSeconds   int64  `json:"uptimeSeconds"`
+}
+
 type TokenIdPath struct {
 	AppSlug string `path:"appSlug"`
 	TokenId string `path:"tokenId"`

@@ -158,6 +158,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/system/stats",
+				Handler: admin.SystemStatsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/users",
 				Handler: admin.ListUsersHandler(serverCtx),
 			},

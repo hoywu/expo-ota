@@ -71,6 +71,11 @@ const router = createRouter({
           name: 'users',
           component: () => import('@/views/admin/UsersView.vue'),
         },
+        {
+          path: 'admin/observability',
+          name: 'observability',
+          component: () => import('@/views/admin/ObservabilityView.vue'),
+        },
       ],
     },
     {

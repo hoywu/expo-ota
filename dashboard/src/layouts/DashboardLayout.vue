@@ -27,6 +27,12 @@ const globalNav = computed<NavigationMenuItem[]>(() => [
     to: '/admin/users',
     active: route.path.startsWith('/admin/users'),
   },
+  {
+    label: 'Observability',
+    icon: 'i-lucide-activity',
+    to: '/admin/observability',
+    active: route.path.startsWith('/admin/observability'),
+  },
 ]);
 
 const appNav = computed<NavigationMenuItem[]>(() => {
@@ -69,6 +75,7 @@ const pageTitle = computed(() => {
   if (route.name === 'signing-key') return 'Signing Key';
   if (route.name === 'audit-logs') return 'Audit Logs';
   if (route.name === 'users') return 'Users';
+  if (route.name === 'observability') return 'Observability';
   return 'Dashboard';
 });
 
