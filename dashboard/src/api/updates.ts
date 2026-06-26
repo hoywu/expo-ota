@@ -7,6 +7,7 @@ import type {
   PublishResp,
   RollbackResp,
   UpdateDetailResp,
+  UpdateStatsResp,
 } from '@/types/admin';
 
 export function listUpdates(
@@ -23,9 +24,25 @@ export function listUpdates(
   return apiRequest<ListUpdatesResp>(`/apps/${encodeURIComponent(appSlug)}/updates${qs}`);
 }
 
-export function getUpdate(appSlug: string, updateId: string): Promise<UpdateDetailResp> {
+export function getUpdate(
+  appSlug: string,
+  updateId: string,
+  signal?: AbortSignal
+): Promise<UpdateDetailResp> {
   return apiRequest<UpdateDetailResp>(
-    `/apps/${encodeURIComponent(appSlug)}/updates/${encodeURIComponent(updateId)}`
+    `/apps/${encodeURIComponent(appSlug)}/updates/${encodeURIComponent(updateId)}`,
+    { signal }
+  );
+}
+
+export function getUpdateStats(
+  appSlug: string,
+  updateId: string,
+  signal?: AbortSignal
+): Promise<UpdateStatsResp> {
+  return apiRequest<UpdateStatsResp>(
+    `/apps/${encodeURIComponent(appSlug)}/updates/${encodeURIComponent(updateId)}/stats`,
+    { signal }
   );
 }
 

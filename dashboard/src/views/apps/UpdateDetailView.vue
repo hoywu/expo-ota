@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CopyButton from '@/components/CopyButton.vue';
 import StatCard from '@/components/StatCard.vue';
@@ -20,30 +20,111 @@ const updateId = computed(() => route.params.updateId as string);
 
 const detail = ref<UpdateDetailResp | null>(null);
 const loading = ref(true);
+const statsError = ref(false);
 const actionLoading = ref(false);
 const deleteOpen = ref(false);
 const republishOpen = ref(false);
 
-async function load(): Promise<void> {
-  loading.value = true;
-  try {
-    detail.value = await updatesApi.getUpdate(appSlug.value, updateId.value);
-  } catch (e) {
-    handleApiError(e, toast);
-    router.push(`/apps/${appSlug.value}/updates`);
-  } finally {
-    loading.value = false;
+const POLL_INTERVAL_MS = 5000;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let scopeGeneration = 0;
+let scopeController: AbortController | null = null;
+let statsController: AbortController | null = null;
+let statsRequestId = 0;
+
+function isAbortError(e: unknown): boolean {
+  return e instanceof DOMException && e.name === 'AbortError';
+}
+
+function isActiveScope(generation: number): boolean {
+  return generation === scopeGeneration;
+}
+
+function beginScope(): { generation: number; signal: AbortSignal } {
+  scopeController?.abort();
+  scopeController = new AbortController();
+  scopeGeneration += 1;
+  return { generation: scopeGeneration, signal: scopeController.signal };
+}
+
+function cancelScope(): void {
+  scopeController?.abort();
+  scopeController = null;
+  statsController?.abort();
+  statsController = null;
+  scopeGeneration += 1;
+  statsRequestId += 1;
+}
+
+function stopPolling(): void {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 }
 
-onMounted(load);
+function startPolling(): void {
+  stopPolling();
+  if (detail.value?.status !== 'published') return;
+  pollTimer = setInterval(refreshStats, POLL_INTERVAL_MS);
+}
+
+async function loadInitial(): Promise<void> {
+  const { generation, signal } = beginScope();
+  loading.value = true;
+  statsError.value = false;
+  try {
+    const data = await updatesApi.getUpdate(appSlug.value, updateId.value, signal);
+    if (!isActiveScope(generation)) return;
+    detail.value = data;
+    startPolling();
+  } catch (e) {
+    if (!isActiveScope(generation) || isAbortError(e)) return;
+    handleApiError(e, toast);
+    router.push(`/apps/${appSlug.value}/updates`);
+  } finally {
+    if (isActiveScope(generation)) {
+      loading.value = false;
+    }
+  }
+}
+
+async function refreshStats(): Promise<void> {
+  if (!detail.value || detail.value.status !== 'published') return;
+  const generation = scopeGeneration;
+  const requestId = ++statsRequestId;
+  statsController?.abort();
+  statsController = new AbortController();
+  const signal = statsController.signal;
+  try {
+    const stats = await updatesApi.getUpdateStats(appSlug.value, updateId.value, signal);
+    if (!isActiveScope(generation) || requestId !== statsRequestId) return;
+    detail.value.stats = stats;
+    statsError.value = false;
+  } catch (e) {
+    if (isAbortError(e) || !isActiveScope(generation) || requestId !== statsRequestId) return;
+    statsError.value = true;
+  }
+}
+
+onMounted(loadInitial);
+
+onUnmounted(() => {
+  stopPolling();
+  cancelScope();
+});
+
+watch([appSlug, updateId], async () => {
+  stopPolling();
+  await loadInitial();
+});
 
 async function publish(): Promise<void> {
   actionLoading.value = true;
   try {
     await updatesApi.publishUpdate(appSlug.value, updateId.value);
     toast.add({ title: 'Update published', color: 'success', duration: 3000 });
-    await load();
+    await loadInitial();
   } catch (e) {
     handleApiError(e, toast);
   } finally {
@@ -164,7 +245,15 @@ const assetColumns = [
       </UCard>
 
       <div>
-        <h3 class="font-medium text-default mb-3">Statistics</h3>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <h3 class="font-medium text-default">Statistics</h3>
+          <template v-if="detail.status === 'published'">
+            <UBadge :color="statsError ? 'error' : 'success'" variant="subtle">
+              {{ statsError ? 'stale' : 'live' }}
+            </UBadge>
+            <span class="text-muted text-xs">refreshes every 5s</span>
+          </template>
+        </div>
         <EmptyState
           v-if="detail.status !== 'published'"
           title="Not published yet"

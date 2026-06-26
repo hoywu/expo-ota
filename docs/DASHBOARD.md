@@ -418,19 +418,25 @@ ConfirmModal「Creates a new pending draft from this update」
 
 #### 7.5.2 统计卡（6 个 StatCard + NumberFlow）
 
-来自 `UpdateDetailResp.stats`：
+数据来自 `UpdateStatsResp`（初次加载嵌在 `UpdateDetailResp.stats`；已发布 update 每 5s 轮询刷新）：
 
-| 指标 | 字段 |
-| ---- | ---- |
-| Requested devices | `requestedDevices` |
-| Succeeded devices | `succeededDevices` |
-| Failed devices | `failedDevices` |
-| Min duration | `durationMinMs` ms |
-| Max duration | `durationMaxMs` ms |
-| Avg duration | `durationAvgMs` ms |
+| 指标 | 字段 | 备注 |
+| ---- | ---- | ---- |
+| Requested devices | `requestedDevices` | StatCard `note-value` 展示 `requestsWithoutDeviceId`（无 device id 的请求数） |
+| Succeeded devices | `succeededDevices` | |
+| Failed devices | `failedDevices` | |
+| Min duration | `durationMinMs` ms | |
+| Max duration | `durationMaxMs` ms | |
+| Avg duration | `durationAvgMs` ms | |
 
-**当前 server 行为**：统计为**全时段聚合**（`GET update` 无 `from`/`to` 参数）。  
-**Dashboard MVP**：直接展示上述字段。  
+**加载与刷新**：
+
+- 进入页面：`GET .../updates/:updateId` 拉取详情（含首屏 `stats`）
+- `status=published` 时启动 5s 轮询：`GET .../updates/:updateId/stats` 仅更新 `detail.stats`（`updatesApi.getUpdateStats`）
+- 标题旁展示 `live` / `stale` badge；轮询失败保留上次数据并标为 `stale`
+- 路由参数变化或组件卸载时取消进行中的请求（`AbortSignal`）并停止轮询
+
+**当前 server 行为**：统计为**全时段聚合**（stats 端点无 `from`/`to` 参数）；非 `published` update 的 stats 端点返回空对象。  
 **后续增强**（需 server 扩展 query + IMPLEMENTATION §10.2）：时间范围选择器 1h / 24h / 7d / 30d / custom。
 
 仅 `status=published` 时统计有意义；pending 显示 EmptyState「Not published yet」。
@@ -454,7 +460,10 @@ ConfirmModal「Creates a new pending draft from this update」
 
 Delete 失败 400：`update must be at least 3 published versions behind...` → 友好 toast 解释规则。
 
-**API**：`GET /api/admin/apps/:appSlug/updates/:updateId`
+**API**：
+
+- `GET /api/admin/apps/:appSlug/updates/:updateId` — 详情（含 manifest、assets、首屏 stats）
+- `GET /api/admin/apps/:appSlug/updates/:updateId/stats` — 仅 stats（Dashboard 轮询用）
 
 ---
 
@@ -794,6 +803,7 @@ PATCH  /api/admin/apps/:appSlug
 DELETE /api/admin/apps/:appSlug
 GET    /api/admin/apps/:appSlug/updates
 GET    /api/admin/apps/:appSlug/updates/:updateId
+GET    /api/admin/apps/:appSlug/updates/:updateId/stats
 DELETE /api/admin/apps/:appSlug/updates/:updateId
 POST   /api/admin/apps/:appSlug/updates/:updateId/publish
 POST   /api/admin/apps/:appSlug/updates/:updateId/rollback

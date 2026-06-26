@@ -563,7 +563,8 @@ ON CONFLICT (app_id, event_id) DO NOTHING;
 | Method | Path                                                    | 说明                                                     |
 | ------ | ------------------------------------------------------- | -------------------------------------------------------- |
 | GET    | `/api/admin/apps/{appSlug}/updates`                     | 列表，支持 `?platform=ios&runtimeVersion=1.0.0&limit=20` |
-| GET    | `/api/admin/apps/{appSlug}/updates/{updateId}`          | 详情（含 manifest 预览 + 统计）                          |
+| GET    | `/api/admin/apps/{appSlug}/updates/{updateId}`          | 详情（含 manifest 预览 + 首屏统计）                      |
+| GET    | `/api/admin/apps/{appSlug}/updates/{updateId}/stats`    | 仅返回 `UpdateStatsResp`；非 `published` 时为空对象      |
 | DELETE | `/api/admin/apps/{appSlug}/updates/{updateId}`          | 软删 + 异步 GC 孤儿 asset                                |
 | POST   | `/api/admin/apps/{appSlug}/updates/{updateId}/publish`  | 将 pending update 发布为 published，并写 `published_at`（**仅管理员 JWT；Dashboard 操作**） |
 | POST   | `/api/admin/apps/{appSlug}/updates/{updateId}/rollback` | 复制为新 update，标记 `rolled_back_from`                 |
@@ -1182,7 +1183,9 @@ export async function checkAndReport(autoUpdate = true): Promise<boolean> {
 
 `manifest_requests` 只记录已解析到有效 App 的 manifest 请求结果。协议头不合法、App 不存在或已软删等 app 解析前失败会直接返回错误，不写观测行。
 
-**Update 详情页 "统计卡"**（时间段 [t1, t2]；`$2` = 该 update 的 `manifest_uuid`）：
+**当前实现（MVP）**：`GetUpdate` 与 `GetUpdateStats` 共用 `buildUpdateStats`，对 `manifest_requests`（按 `served_update_id`）与 `client_events`（按 `manifest_uuid`）做**全时段**聚合，返回 `UpdateStatsResp`（含 `requestedDevices`、`requestsWithoutDeviceId`、`succeededDevices`、`failedDevices`、duration 三字段）。Dashboard 详情页首屏走 `GET .../updates/{updateId}`，对已发布 update 每 5s 轮询 `GET .../updates/{updateId}/stats` 刷新数字卡。
+
+**计划增强（时间范围）**：`GET .../stats` 增加 `?from=&to=` 后，Dashboard 提供选择器。下述 SQL 为带时间窗的参考查询（`$2` = 该 update 的 `manifest_uuid`）：
 
 ```sql
 WITH req AS (

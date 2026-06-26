@@ -142,6 +142,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.RollbackUpdateHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/updates/:updateId/stats",
+				Handler: admin.GetUpdateStatsHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodPost,
 				Path:    "/apps/:appSlug/updates/cleanup",
 				Handler: admin.CleanupUpdatesHandler(serverCtx),

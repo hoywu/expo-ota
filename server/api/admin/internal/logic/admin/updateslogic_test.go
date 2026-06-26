@@ -190,6 +190,64 @@ func TestGetUpdateIncludesRequestStats(t *testing.T) {
 	}
 }
 
+func TestGetUpdateStatsReturnsAggregatedCounts(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	update := newTestUpdate()
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Updates.EXPECT().FindOne(gomock.Any(), "update-1").Return(update, nil)
+	m.ManifestRequests.EXPECT().CountDistinctDevices(gomock.Any(), "app-1", "update-1").Return(int64(5), nil)
+	m.ManifestRequests.EXPECT().CountWithoutDeviceId(gomock.Any(), "app-1", "update-1").Return(int64(2), nil)
+	m.ClientEvents.EXPECT().StatsByUpdate(gomock.Any(), "app-1", "11111111-2222-3333-4444-555555555555").Return(&models.ClientEventUpdateStats{
+		SucceededDevices: 4,
+		FailedDevices:    1,
+		DurationMinMs:    sql.NullInt64{Int64: 100, Valid: true},
+		DurationMaxMs:    sql.NullInt64{Int64: 500, Valid: true},
+		DurationAvgMs:    sql.NullInt64{Int64: 250, Valid: true},
+	}, nil)
+
+	resp, err := NewGetUpdateStatsLogic(context.Background(), svcCtx).GetUpdateStats(&types.UpdateIdPath{
+		AppSlug: "my-app", UpdateId: "update-1",
+	})
+	if err != nil {
+		t.Fatalf("GetUpdateStats returned error: %v", err)
+	}
+	if resp.RequestedDevices != 5 || resp.RequestsWithoutDeviceId != 2 {
+		t.Errorf("stats = %+v", resp)
+	}
+	if resp.SucceededDevices != 4 || resp.FailedDevices != 1 {
+		t.Errorf("event stats = %+v", resp)
+	}
+	if resp.DurationMinMs != 100 || resp.DurationMaxMs != 500 || resp.DurationAvgMs != 250 {
+		t.Errorf("duration stats = %+v", resp)
+	}
+}
+
+func TestGetUpdateStatsReturnsEmptyForPendingUpdate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	update := newTestUpdate()
+	update.Status = "pending"
+	update.PublishedAt = sql.NullTime{}
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Updates.EXPECT().FindOne(gomock.Any(), "update-1").Return(update, nil)
+
+	resp, err := NewGetUpdateStatsLogic(context.Background(), svcCtx).GetUpdateStats(&types.UpdateIdPath{
+		AppSlug: "my-app", UpdateId: "update-1",
+	})
+	if err != nil {
+		t.Fatalf("GetUpdateStats returned error: %v", err)
+	}
+	if resp.RequestedDevices != 0 || resp.RequestsWithoutDeviceId != 0 ||
+		resp.SucceededDevices != 0 || resp.FailedDevices != 0 {
+		t.Errorf("stats = %+v", resp)
+	}
+}
+
 func TestRollbackUpdateCreatesPendingCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newFullTestSvcCtx(ctrl)

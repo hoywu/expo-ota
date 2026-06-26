@@ -442,6 +442,9 @@ service admin-api {
 	@handler GetUpdate
 	get /apps/:appSlug/updates/:updateId (UpdateIdPath) returns (UpdateDetailResp)
 
+	@handler GetUpdateStats
+	get /apps/:appSlug/updates/:updateId/stats (UpdateIdPath) returns (UpdateStatsResp)
+
 	@handler DeleteUpdate
 	delete /apps/:appSlug/updates/:updateId (UpdateIdPath) returns (EmptyResp)
 
