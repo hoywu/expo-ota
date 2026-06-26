@@ -245,78 +245,74 @@ const columns = [
       icon="i-lucide-package"
     />
 
-    <div v-else class="overflow-x-auto">
-      <UCard variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
-        <UTable :data="items" :columns="columns" :meta="tableMeta">
-          <template #status-cell="{ row }">
-            <div class="flex items-center gap-1.5">
-              <UBadge
-                :color="row.original.status === 'published' ? 'success' : 'warning'"
-                variant="subtle"
-              >
-                {{ row.original.status }}
-              </UBadge>
-              <UBadge v-if="isLatestPublished(row.original)" color="success" variant="solid">
-                Latest
-              </UBadge>
-            </div>
-          </template>
-          <template #platform-cell="{ row }">
-            <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <UIcon
-                :name="
-                  row.original.platform === 'ios'
-                    ? 'i-lucide-smartphone'
-                    : 'i-lucide-tablet-smartphone'
-                "
-                class="size-4 shrink-0"
-              />
-              {{ row.original.platform }}
-            </span>
-          </template>
-          <template #message-cell="{ row }">
-            <span class="truncate max-w-xs block">{{ row.original.message || '—' }}</span>
-          </template>
-          <template #manifestUuid-cell="{ row }">
-            <span
-              class="font-mono text-xs inline-flex items-center gap-1 whitespace-nowrap min-w-52"
+    <UCard v-else variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+      <UTable :data="items" :columns="columns" :meta="tableMeta">
+        <template #status-cell="{ row }">
+          <div class="flex items-center gap-1.5">
+            <UBadge
+              :color="row.original.status === 'published' ? 'success' : 'warning'"
+              variant="subtle"
             >
-              {{ truncateMiddle(row.original.manifestUuid, 14, 8) }}
-              <CopyButton :value="row.original.manifestUuid" />
-            </span>
-          </template>
-          <template #createdAt-cell="{ row }">
-            <TimeAgo :iso="row.original.createdAt" />
-          </template>
-          <template #actions-cell="{ row }">
-            <div class="flex justify-end gap-1">
-              <UButton
-                label="View"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                :to="`/apps/${appSlug}/updates/${row.original.id}`"
-              />
-              <UButton
-                v-if="row.original.status === 'pending'"
-                label="Publish"
-                size="xs"
-                :loading="actionLoadingId === row.original.id"
-                @click="publishUpdate(row.original)"
-              />
-              <UButton
-                v-if="row.original.status === 'published' && !isLatestPublished(row.original)"
-                label="Republish Previous"
-                size="xs"
-                color="neutral"
-                variant="outline"
-                @click="openRepublish(row.original)"
-              />
-            </div>
-          </template>
-        </UTable>
-      </UCard>
-    </div>
+              {{ row.original.status }}
+            </UBadge>
+            <UBadge v-if="isLatestPublished(row.original)" color="success" variant="solid">
+              Latest
+            </UBadge>
+          </div>
+        </template>
+        <template #platform-cell="{ row }">
+          <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <UIcon
+              :name="
+                row.original.platform === 'ios'
+                  ? 'i-lucide-smartphone'
+                  : 'i-lucide-tablet-smartphone'
+              "
+              class="size-4 shrink-0"
+            />
+            {{ row.original.platform }}
+          </span>
+        </template>
+        <template #message-cell="{ row }">
+          <span class="truncate max-w-xs block">{{ row.original.message || '—' }}</span>
+        </template>
+        <template #manifestUuid-cell="{ row }">
+          <span class="font-mono text-xs inline-flex items-center gap-1 whitespace-nowrap min-w-52">
+            {{ truncateMiddle(row.original.manifestUuid, 14, 8) }}
+            <CopyButton :value="row.original.manifestUuid" />
+          </span>
+        </template>
+        <template #createdAt-cell="{ row }">
+          <TimeAgo :iso="row.original.createdAt" />
+        </template>
+        <template #actions-cell="{ row }">
+          <div class="flex justify-end gap-1">
+            <UButton
+              label="View"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              :to="`/apps/${appSlug}/updates/${row.original.id}`"
+            />
+            <UButton
+              v-if="row.original.status === 'pending'"
+              label="Publish"
+              size="xs"
+              :loading="actionLoadingId === row.original.id"
+              @click="publishUpdate(row.original)"
+            />
+            <UButton
+              v-if="row.original.status === 'published' && !isLatestPublished(row.original)"
+              label="Republish Previous"
+              size="xs"
+              color="neutral"
+              variant="outline"
+              @click="openRepublish(row.original)"
+            />
+          </div>
+        </template>
+      </UTable>
+    </UCard>
 
     <div v-if="nextCursor" class="mt-4 text-center">
       <UButton label="Load more" :loading="loadingMore" variant="outline" @click="load(false)" />

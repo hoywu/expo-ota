@@ -122,42 +122,40 @@ const columns = [
       icon="i-lucide-scroll-text"
     />
 
-    <div v-else class="overflow-x-auto">
-      <UCard variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
-        <UTable :data="items" :columns="columns">
-          <template #occurredAt-cell="{ row }">
-            <TimeAgo :iso="row.original.occurredAt" />
-          </template>
-          <template #actorUserId-cell="{ row }">
-            <span class="font-mono text-xs">{{ row.original.actorUserId ?? '—' }}</span>
-          </template>
-          <template #targetType-cell="{ row }">
-            <span v-if="row.original.targetType" class="text-xs">
-              {{ row.original.targetType }}
-              <span v-if="row.original.targetId" class="font-mono text-muted">
-                / {{ row.original.targetId }}</span
-              >
-            </span>
-            <span v-else class="text-muted">—</span>
-          </template>
-          <template #ip-cell="{ row }">
-            <span class="text-xs">{{ row.original.ip ?? '—' }}</span>
-          </template>
-          <template #payload-cell="{ row }">
-            <UButton
-              v-if="row.original.payload && Object.keys(row.original.payload).length > 0"
-              label="View"
-              icon="i-lucide-braces"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              @click="openPayload(row.original)"
-            />
-            <span v-else class="text-muted">—</span>
-          </template>
-        </UTable>
-      </UCard>
-    </div>
+    <UCard v-else variant="subtle" :ui="{ body: 'p-0 sm:p-0' }">
+      <UTable :data="items" :columns="columns">
+        <template #occurredAt-cell="{ row }">
+          <TimeAgo :iso="row.original.occurredAt" />
+        </template>
+        <template #actorUserId-cell="{ row }">
+          <span class="font-mono text-xs">{{ row.original.actorUserId ?? '—' }}</span>
+        </template>
+        <template #targetType-cell="{ row }">
+          <span v-if="row.original.targetType" class="text-xs">
+            {{ row.original.targetType }}
+            <span v-if="row.original.targetId" class="font-mono text-muted">
+              / {{ row.original.targetId }}</span
+            >
+          </span>
+          <span v-else class="text-muted">—</span>
+        </template>
+        <template #ip-cell="{ row }">
+          <span class="text-xs">{{ row.original.ip ?? '—' }}</span>
+        </template>
+        <template #payload-cell="{ row }">
+          <UButton
+            v-if="row.original.payload && Object.keys(row.original.payload).length > 0"
+            label="View"
+            icon="i-lucide-braces"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            @click="openPayload(row.original)"
+          />
+          <span v-else class="text-muted">—</span>
+        </template>
+      </UTable>
+    </UCard>
 
     <div v-if="nextCursor" class="mt-4 text-center">
       <UButton label="Load more" :loading="loadingMore" variant="outline" @click="load(false)" />
