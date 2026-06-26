@@ -189,22 +189,38 @@ const assetColumns = [
 
     <JsonPreview :data="detail.manifestPreview" class="mb-8" />
 
-    <h3 class="font-medium text-default mb-3">Assets</h3>
-    <UCard variant="subtle" :ui="{ body: 'p-0 sm:p-0' }" class="mb-8">
-      <UTable :data="detail.assets" :columns="assetColumns">
-        <template #sha256-cell="{ row }">
-          <span class="font-mono text-xs">{{ truncateMiddle(row.original.sha256, 6, 6) }}</span>
-        </template>
-        <template #size-cell="{ row }">
-          {{ formatBytes(row.original.size) }}
-        </template>
-        <template #url-cell="{ row }">
-          <a :href="row.original.url" target="_blank" rel="noopener" class="text-primary text-xs"
-            >Open</a
+    <UAccordion
+      :items="[{ label: 'Assets', icon: 'i-lucide-package', slot: 'assets' }]"
+      :default-value="[]"
+      class="mb-8"
+    >
+      <template #assets>
+        <UCard variant="soft" :ui="{ root: 'border border-default', body: 'p-0 sm:p-0' }">
+          <UTable
+            :data="detail.assets"
+            :columns="assetColumns"
+            :ui="{ root: 'max-h-[min(24rem,60vh)]' }"
           >
-        </template>
-      </UTable>
-    </UCard>
+            <template #sha256-cell="{ row }">
+              <span class="font-mono text-xs">{{ truncateMiddle(row.original.sha256, 6, 6) }}</span>
+            </template>
+            <template #size-cell="{ row }">
+              {{ formatBytes(row.original.size) }}
+            </template>
+            <template #url-cell="{ row }">
+              <a
+                :href="row.original.url"
+                target="_blank"
+                rel="noopener"
+                class="text-primary text-xs"
+              >
+                Open
+              </a>
+            </template>
+          </UTable>
+        </UCard>
+      </template>
+    </UAccordion>
 
     <ConfirmModal
       v-model:open="deleteOpen"
