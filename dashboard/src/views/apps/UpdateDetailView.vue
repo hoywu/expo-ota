@@ -9,7 +9,7 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import ConfirmModal from '@/components/ConfirmModal.vue';
 import * as updatesApi from '@/api/updates';
 import { handleApiError, formatBytes, truncateMiddle } from '@/utils/format';
-import type { UpdateDetailResp } from '@/types/admin';
+import type { ClientEventItem, UpdateDetailResp } from '@/types/admin';
 
 const route = useRoute();
 const router = useRouter();
@@ -19,8 +19,10 @@ const appSlug = computed(() => route.params.appSlug as string);
 const updateId = computed(() => route.params.updateId as string);
 
 const detail = ref<UpdateDetailResp | null>(null);
+const clientEvents = ref<ClientEventItem[]>([]);
 const loading = ref(true);
 const statsError = ref(false);
+const clientEventsError = ref(false);
 const actionLoading = ref(false);
 const deleteOpen = ref(false);
 const republishOpen = ref(false);
@@ -66,18 +68,23 @@ function stopPolling(): void {
 function startPolling(): void {
   stopPolling();
   if (detail.value?.status !== 'published') return;
-  pollTimer = setInterval(refreshStats, POLL_INTERVAL_MS);
+  pollTimer = setInterval(refreshLiveData, POLL_INTERVAL_MS);
 }
 
 async function loadInitial(): Promise<void> {
   const { generation, signal } = beginScope();
   loading.value = true;
   statsError.value = false;
+  clientEventsError.value = false;
+  clientEvents.value = [];
   try {
     const data = await updatesApi.getUpdate(appSlug.value, updateId.value, signal);
     if (!isActiveScope(generation)) return;
     detail.value = data;
     startPolling();
+    if (data.status === 'published') {
+      void refreshLiveData();
+    }
   } catch (e) {
     if (!isActiveScope(generation) || isAbortError(e)) return;
     handleApiError(e, toast);
@@ -89,21 +96,30 @@ async function loadInitial(): Promise<void> {
   }
 }
 
-async function refreshStats(): Promise<void> {
+async function refreshLiveData(): Promise<void> {
   if (!detail.value || detail.value.status !== 'published') return;
   const generation = scopeGeneration;
   const requestId = ++statsRequestId;
   statsController?.abort();
   statsController = new AbortController();
   const signal = statsController.signal;
-  try {
-    const stats = await updatesApi.getUpdateStats(appSlug.value, updateId.value, signal);
-    if (!isActiveScope(generation) || requestId !== statsRequestId) return;
-    detail.value.stats = stats;
+  const [statsResult, eventsResult] = await Promise.allSettled([
+    updatesApi.getUpdateStats(appSlug.value, updateId.value, signal),
+    updatesApi.listUpdateClientEvents(appSlug.value, updateId.value, signal),
+  ]);
+  if (!isActiveScope(generation) || requestId !== statsRequestId) return;
+
+  if (statsResult.status === 'fulfilled') {
+    detail.value.stats = statsResult.value;
     statsError.value = false;
-  } catch (e) {
-    if (isAbortError(e) || !isActiveScope(generation) || requestId !== statsRequestId) return;
+  } else if (!isAbortError(statsResult.reason)) {
     statsError.value = true;
+  }
+  if (eventsResult.status === 'fulfilled') {
+    clientEvents.value = eventsResult.value.items;
+    clientEventsError.value = false;
+  } else if (!isAbortError(eventsResult.reason)) {
+    clientEventsError.value = true;
   }
 }
 
@@ -165,6 +181,15 @@ const assetColumns = [
   { accessorKey: 'sha256', header: 'SHA256' },
   { accessorKey: 'size', header: 'Size' },
   { accessorKey: 'url', header: 'URL' },
+];
+
+const clientEventColumns = [
+  { accessorKey: 'eventType', header: 'Type' },
+  { accessorKey: 'deviceId', header: 'Device' },
+  { accessorKey: 'errorCode', header: 'Error code' },
+  { accessorKey: 'errorMessage', header: 'Error message' },
+  { accessorKey: 'durationMs', header: 'Duration' },
+  { accessorKey: 'occurredAt', header: 'Occurred' },
 ];
 </script>
 
@@ -274,6 +299,62 @@ const assetColumns = [
           <StatCard label="Avg duration" :value="detail.stats.durationAvgMs ?? 0" suffix="ms" />
         </div>
       </div>
+    </div>
+
+    <div class="mb-8">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <h3 class="font-medium text-default">Client events</h3>
+        <template v-if="detail.status === 'published'">
+          <UBadge :color="clientEventsError ? 'error' : 'success'" variant="subtle">
+            {{ clientEventsError ? 'stale' : 'live' }}
+          </UBadge>
+          <span class="text-muted text-xs">refreshes every 5s</span>
+        </template>
+      </div>
+      <EmptyState
+        v-if="detail.status !== 'published'"
+        title="Not published yet"
+        description="Client events appear after this update is published and devices report outcomes."
+        icon="i-lucide-activity"
+      />
+      <EmptyState
+        v-else-if="clientEvents.length === 0"
+        title="No client events yet"
+        description="Devices will report update_succeeded or update_failed events here."
+        icon="i-lucide-activity"
+      />
+      <UCard v-else variant="soft" :ui="{ root: 'border border-default', body: 'p-0 sm:p-0' }">
+        <UTable
+          :data="clientEvents"
+          :columns="clientEventColumns"
+          :ui="{ root: 'max-h-[min(24rem,60vh)]' }"
+        >
+          <template #eventType-cell="{ row }">
+            <UBadge
+              :color="row.original.eventType === 'update_failed' ? 'error' : 'success'"
+              variant="subtle"
+            >
+              {{ row.original.eventType }}
+            </UBadge>
+          </template>
+          <template #deviceId-cell="{ row }">
+            <span class="font-mono text-xs">{{ truncateMiddle(row.original.deviceId, 6, 6) }}</span>
+          </template>
+          <template #errorCode-cell="{ row }">
+            <span class="font-mono text-xs">{{ row.original.errorCode || '—' }}</span>
+          </template>
+          <template #errorMessage-cell="{ row }">
+            <span class="text-xs break-all">{{ row.original.errorMessage || '—' }}</span>
+          </template>
+          <template #durationMs-cell="{ row }">
+            <span v-if="row.original.durationMs != null">{{ row.original.durationMs }} ms</span>
+            <span v-else class="text-muted">—</span>
+          </template>
+          <template #occurredAt-cell="{ row }">
+            <TimeAgo :iso="row.original.occurredAt" />
+          </template>
+        </UTable>
+      </UCard>
     </div>
 
     <JsonPreview :data="detail.manifestPreview" class="mb-8" />

@@ -28,7 +28,7 @@
 - 两阶段发布：plan → 直传 COS → finalize
 - 历史 update 复制实现"republish previous"语义
 - 落后 3 个版本后允许删除，附带孤儿 asset GC
-- 客户端事件上报 + 服务端 manifest 请求观察，构成 dashboard 可观测性
+- 客户端事件上报 + 服务端 manifest 请求观察，构成 dashboard 可观测性（统计聚合 + Update 详情页 client events 表）
 - 管理员后台（Vue 3 + Nuxt UI）：App / Update / Token / Signing Key / User / Audit 管理
 - 公网部署：HTTPS、登录限速、API 限速、协议端限速
 
@@ -300,6 +300,8 @@ CREATE TABLE client_events (
 );
 CREATE UNIQUE INDEX client_events_app_event_idx
   ON client_events (app_id, event_id);
+CREATE INDEX client_events_app_manifest_occurred_idx
+  ON client_events (app_id, manifest_uuid, occurred_at DESC);
 
 CREATE TABLE audit_logs (
   id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -565,6 +567,7 @@ ON CONFLICT (app_id, event_id) DO NOTHING;
 | GET    | `/api/admin/apps/{appSlug}/updates`                     | 列表，支持 `?platform=ios&runtimeVersion=1.0.0&limit=20` |
 | GET    | `/api/admin/apps/{appSlug}/updates/{updateId}`          | 详情（含 manifest 预览 + 首屏统计）                      |
 | GET    | `/api/admin/apps/{appSlug}/updates/{updateId}/stats`    | 仅返回 `UpdateStatsResp`；非 `published` 时为空对象      |
+| GET    | `/api/admin/apps/{appSlug}/updates/{updateId}/client-events` | 返回 `ListUpdateClientEventsResp`（`items: ClientEventItem[]`）；非 `published` 时 `items` 为空；已发布时按 `manifest_uuid` 查最近 100 条，按 `occurred_at` 降序 |
 | DELETE | `/api/admin/apps/{appSlug}/updates/{updateId}`          | 软删 + 异步 GC 孤儿 asset                                |
 | POST   | `/api/admin/apps/{appSlug}/updates/{updateId}/publish`  | 将 pending update 发布为 published，并写 `published_at`（**仅管理员 JWT；Dashboard 操作**） |
 | POST   | `/api/admin/apps/{appSlug}/updates/{updateId}/rollback` | 复制为新 update，标记 `rolled_back_from`                 |
@@ -1183,7 +1186,7 @@ export async function checkAndReport(autoUpdate = true): Promise<boolean> {
 
 `manifest_requests` 只记录已解析到有效 App 的 manifest 请求结果。协议头不合法、App 不存在或已软删等 app 解析前失败会直接返回错误，不写观测行。
 
-**当前实现（MVP）**：`GetUpdate` 与 `GetUpdateStats` 共用 `buildUpdateStats`，对 `manifest_requests`（按 `served_update_id`）与 `client_events`（按 `manifest_uuid`）做**全时段**聚合，返回 `UpdateStatsResp`（含 `requestedDevices`、`requestsWithoutDeviceId`、`succeededDevices`、`failedDevices`、duration 三字段）。Dashboard 详情页首屏走 `GET .../updates/{updateId}`，对已发布 update 每 5s 轮询 `GET .../updates/{updateId}/stats` 刷新数字卡。
+**当前实现（MVP）**：`GetUpdate` 与 `GetUpdateStats` 共用 `buildUpdateStats`，对 `manifest_requests`（按 `served_update_id`）与 `client_events`（按 `manifest_uuid`）做**全时段**聚合，返回 `UpdateStatsResp`（含 `requestedDevices`、`requestsWithoutDeviceId`、`succeededDevices`、`failedDevices`、duration 三字段）。Dashboard 详情页首屏走 `GET .../updates/{updateId}`；对已发布 update 每 5s 并行轮询 `GET .../updates/{updateId}/stats`（刷新数字卡）与 `GET .../updates/{updateId}/client-events`（刷新最近 100 条原始事件行）。`ListUpdateClientEvents` 对非 `published` update 直接返回空 `items`，不查库。
 
 **计划增强（时间范围）**：`GET .../stats` 增加 `?from=&to=` 后，Dashboard 提供选择器。下述 SQL 为带时间窗的参考查询（`$2` = 该 update 的 `manifest_uuid`）：
 
@@ -1523,10 +1526,10 @@ docker exec expo-ota-nginx-1 nginx -s reload
 - **Channel / Branch / 灰度**：明确不做
 - **自定义 directive**：明确不做
 - **Webhooks / 通知**：用户未要求
-- **客户端事件原始日志查询 UI**：先用 SQL 直查 `client_events` 表，量大时再补 UI
 
 ### 14.3 后续可演进方向
 
+- Client events 列表分页 / 筛选 / 时间范围（当前 Dashboard 固定展示最近 100 条）
 - KMS 加密私钥（替换 env AES 密钥）
 - ClickHouse 接 client_events 做大盘
 - Webhook 发布完成通知（钉钉/飞书/Slack）

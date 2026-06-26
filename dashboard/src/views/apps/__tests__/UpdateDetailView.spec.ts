@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import type { UpdateDetailResp, UpdateStatsResp } from '@/types/admin';
+import type { ClientEventItem, UpdateDetailResp, UpdateStatsResp } from '@/types/admin';
 
 vi.mock('@nuxt/ui/composables/useToast', () => ({
   useToast: () => ({ add: vi.fn<() => void>() }),
@@ -18,12 +18,18 @@ const routeParamsHolder = vi.hoisted(() => ({
   current: null as { appSlug: string; updateId: string } | null,
 }));
 
-const { getUpdate, getUpdateStats, publishUpdate } = vi.hoisted(() => ({
+const { getUpdate, getUpdateStats, listUpdateClientEvents, publishUpdate } = vi.hoisted(() => ({
   getUpdate: vi.fn<(...args: unknown[]) => Promise<UpdateDetailResp>>(),
   getUpdateStats: vi.fn<(...args: unknown[]) => Promise<UpdateStatsResp>>(),
+  listUpdateClientEvents: vi.fn<(...args: unknown[]) => Promise<{ items: ClientEventItem[] }>>(),
   publishUpdate: vi.fn<() => Promise<{ updateId: string }>>(),
 }));
-vi.mock('@/api/updates', () => ({ getUpdate, getUpdateStats, publishUpdate }));
+vi.mock('@/api/updates', () => ({
+  getUpdate,
+  getUpdateStats,
+  listUpdateClientEvents,
+  publishUpdate,
+}));
 
 const push = vi.fn();
 vi.mock('vue-router', async (importOriginal) => {
@@ -50,6 +56,18 @@ const mockStats: UpdateStatsResp = {
   durationMaxMs: 500,
   durationAvgMs: 250,
 };
+
+const mockClientEvents: ClientEventItem[] = [
+  {
+    eventId: 'event-1',
+    eventType: 'update_failed',
+    occurredAt: '2026-05-01T02:00:00Z',
+    receivedAt: '2026-05-01T02:00:01Z',
+    deviceId: 'device-abc-123',
+    errorCode: 'ASSET_HASH_MISMATCH',
+    errorMessage: 'hash mismatch',
+  },
+];
 
 const publishedDetail: UpdateDetailResp = {
   id: 'update-1',
@@ -106,8 +124,11 @@ describe('UpdateDetailView', () => {
     routeParams().updateId = 'update-1';
     getUpdate.mockReset();
     getUpdateStats.mockReset();
+    listUpdateClientEvents.mockReset();
     publishUpdate.mockReset();
     push.mockReset();
+    getUpdateStats.mockResolvedValue(mockStats);
+    listUpdateClientEvents.mockResolvedValue({ items: mockClientEvents });
   });
 
   afterEach(() => {
@@ -127,15 +148,18 @@ describe('UpdateDetailView', () => {
     await flushPromises();
 
     expect(getUpdate).toHaveBeenCalledTimes(1);
-    expect(getUpdateStats).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(5000);
-    await flushPromises();
     expect(getUpdateStats).toHaveBeenCalledTimes(1);
+    expect(listUpdateClientEvents).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(5000);
     await flushPromises();
     expect(getUpdateStats).toHaveBeenCalledTimes(2);
+    expect(listUpdateClientEvents).toHaveBeenCalledTimes(2);
+
+    vi.advanceTimersByTime(5000);
+    await flushPromises();
+    expect(getUpdateStats).toHaveBeenCalledTimes(3);
+    expect(listUpdateClientEvents).toHaveBeenCalledTimes(3);
   });
 
   it('does not poll stats for pending updates', async () => {
@@ -147,6 +171,7 @@ describe('UpdateDetailView', () => {
     vi.advanceTimersByTime(15000);
     await flushPromises();
     expect(getUpdateStats).not.toHaveBeenCalled();
+    expect(listUpdateClientEvents).not.toHaveBeenCalled();
   });
 
   it('stops polling on unmount', async () => {
@@ -155,13 +180,16 @@ describe('UpdateDetailView', () => {
 
     wrapper = mount(UpdateDetailView, { global: { stubs } });
     await flushPromises();
+    const statsCallsAfterMount = getUpdateStats.mock.calls.length;
+    const eventsCallsAfterMount = listUpdateClientEvents.mock.calls.length;
 
     wrapper.unmount();
     wrapper = null;
 
     vi.advanceTimersByTime(15000);
     await flushPromises();
-    expect(getUpdateStats).not.toHaveBeenCalled();
+    expect(getUpdateStats).toHaveBeenCalledTimes(statsCallsAfterMount);
+    expect(listUpdateClientEvents).toHaveBeenCalledTimes(eventsCallsAfterMount);
   });
 
   it('keeps showing data when stats refresh fails', async () => {
@@ -171,12 +199,10 @@ describe('UpdateDetailView', () => {
     wrapper = mount(UpdateDetailView, { global: { stubs } });
     await flushPromises();
 
-    vi.advanceTimersByTime(5000);
-    await flushPromises();
-
     expect(push).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('stale');
     expect(wrapper.text()).toContain('5');
+    expect(wrapper.text()).toContain('live');
   });
 
   it('reloads when update id changes', async () => {
@@ -225,10 +251,11 @@ describe('UpdateDetailView', () => {
 
     await wrapper.get('button', { text: 'Publish' }).trigger('click');
     await flushPromises();
+    expect(getUpdateStats).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(5000);
     await flushPromises();
-    expect(getUpdateStats).toHaveBeenCalledTimes(1);
+    expect(getUpdateStats).toHaveBeenCalledTimes(2);
   });
 
   it('updates displayed stats after a successful poll', async () => {
@@ -237,13 +264,13 @@ describe('UpdateDetailView', () => {
 
     wrapper = mount(UpdateDetailView, { global: { stubs } });
     await flushPromises();
-    expect(wrapper.text()).toContain('5');
+    expect(wrapper.text()).toContain('42');
+    expect(wrapper.text()).toContain('live');
 
     vi.advanceTimersByTime(5000);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('42');
-    expect(wrapper.text()).toContain('live');
+    expect(getUpdateStats).toHaveBeenCalledTimes(2);
   });
 
   it('recovers from stale to live after a failed then successful poll', async () => {
@@ -254,9 +281,6 @@ describe('UpdateDetailView', () => {
 
     wrapper = mount(UpdateDetailView, { global: { stubs } });
     await flushPromises();
-
-    vi.advanceTimersByTime(5000);
-    await flushPromises();
     expect(wrapper.text()).toContain('stale');
 
     vi.advanceTimersByTime(5000);
@@ -266,21 +290,66 @@ describe('UpdateDetailView', () => {
     expect(wrapper.text()).toContain('8');
   });
 
-  it('ignores stale async stats responses when a newer poll completes first', async () => {
+  it('loads client events immediately for published updates', async () => {
     getUpdate.mockResolvedValue(publishedDetail);
-    let resolveSlow: (value: UpdateStatsResp) => void = () => {};
-    const slowPromise = new Promise<UpdateStatsResp>((resolve) => {
-      resolveSlow = resolve;
-    });
-    getUpdateStats.mockReturnValueOnce(slowPromise).mockResolvedValueOnce({
-      ...mockStats,
-      requestedDevices: 8888,
+    getUpdateStats.mockResolvedValue(mockStats);
+
+    wrapper = mount(UpdateDetailView, { global: { stubs } });
+    await flushPromises();
+
+    expect(listUpdateClientEvents).toHaveBeenCalledWith(
+      'my-app',
+      'update-1',
+      expect.any(AbortSignal)
+    );
+  });
+
+  it('updates displayed client events after a successful poll', async () => {
+    getUpdate.mockResolvedValue(publishedDetail);
+    getUpdateStats.mockResolvedValue(mockStats);
+    listUpdateClientEvents.mockResolvedValue({
+      items: [
+        ...mockClientEvents,
+        {
+          ...mockClientEvents[0],
+          eventId: 'event-2',
+          deviceId: 'device-new',
+        },
+      ],
     });
 
     wrapper = mount(UpdateDetailView, { global: { stubs } });
     await flushPromises();
 
     vi.advanceTimersByTime(5000);
+    await flushPromises();
+
+    expect(listUpdateClientEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows stale only for client events when events refresh fails', async () => {
+    getUpdate.mockResolvedValue(publishedDetail);
+    getUpdateStats.mockResolvedValue(mockStats);
+    listUpdateClientEvents.mockRejectedValue(new Error('network'));
+
+    wrapper = mount(UpdateDetailView, { global: { stubs } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('stale');
+    expect(wrapper.text()).toContain('live');
+  });
+
+  it('ignores stale async stats responses when a newer poll completes first', async () => {
+    getUpdate.mockResolvedValue(publishedDetail);
+    let resolveSlow: (value: UpdateStatsResp) => void = () => {};
+    const slowPromise = new Promise<UpdateStatsResp>((resolve) => {
+      resolveSlow = resolve;
+    });
+    getUpdateStats
+      .mockReturnValueOnce(slowPromise)
+      .mockResolvedValue({ ...mockStats, requestedDevices: 8888 });
+
+    wrapper = mount(UpdateDetailView, { global: { stubs } });
     await flushPromises();
 
     vi.advanceTimersByTime(5000);

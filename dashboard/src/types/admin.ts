@@ -88,6 +88,25 @@ export interface UpdateStatsResp {
   durationAvgMs?: number;
 }
 
+export interface ClientEventItem {
+  eventId: string;
+  eventType: string;
+  occurredAt: string;
+  receivedAt: string;
+  deviceId: string;
+  appVersion?: string;
+  osVersion?: string;
+  durationMs?: number;
+  errorCode?: string;
+  errorMessage?: string;
+  platform?: string;
+  runtimeVersion?: string;
+}
+
+export interface ListUpdateClientEventsResp {
+  items: ClientEventItem[];
+}
+
 export interface UpdateDetailResp {
   id: string;
   appSlug: string;

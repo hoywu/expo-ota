@@ -132,6 +132,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.DeleteUpdateHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodGet,
+				Path:    "/apps/:appSlug/updates/:updateId/client-events",
+				Handler: admin.ListUpdateClientEventsHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodPost,
 				Path:    "/apps/:appSlug/updates/:updateId/publish",
 				Handler: admin.PublishUpdateHandler(serverCtx),

@@ -35,7 +35,7 @@ Dashboard 是面向内部管理员的 SPA，通过同源 Nginx 反代调用 `adm
 | **User** | 管理员账号 CRUD（创建、改密、启用/禁用） |
 | **Audit Log** | 按 App 查看管理写操作审计 |
 
-可观测性：Update 详情页展示 6 项统计数字（manifest 请求设备数、成功/失败设备数、下载耗时 min/max/avg），数字使用 `@number-flow/vue` 动效。
+可观测性：Update 详情页展示 6 项统计数字（manifest 请求设备数、成功/失败设备数、下载耗时 min/max/avg，使用 `@number-flow/vue` 动效），以及已发布 update 的 client events 原始行表（最近 100 条，5s 轮询）。
 
 ### 1.2 Out-of-Scope（明确不做）
 
@@ -44,7 +44,6 @@ Dashboard 是面向内部管理员的 SPA，通过同源 Nginx 反代调用 `adm
 - **浏览器内上传**（plan / COS 直传 / finalize）：生产发布走 `cli/publish.ts` + API Token
 - **Channel / Branch / 灰度路由** UI
 - **多租户 / Organization / RBAC**：任意管理员等价，无角色 UI
-- **Client Event 原始日志查询**：统计卡即可；原始行查 DB（见 IMPLEMENTATION §14.2）
 - **Prometheus / Grafana 嵌入**
 - **i18n**：MVP 仅英文 UI（或仅中文，二选一固定；实现时统一即可）
 
@@ -432,8 +431,8 @@ ConfirmModal「Creates a new pending draft from this update」
 **加载与刷新**：
 
 - 进入页面：`GET .../updates/:updateId` 拉取详情（含首屏 `stats`）
-- `status=published` 时启动 5s 轮询：`GET .../updates/:updateId/stats` 仅更新 `detail.stats`（`updatesApi.getUpdateStats`）
-- 标题旁展示 `live` / `stale` badge；轮询失败保留上次数据并标为 `stale`
+- `status=published` 时启动 5s 轮询：`Promise.allSettled` 并行请求 `GET .../stats` 与 `GET .../client-events`（`refreshLiveData`）
+- 统计卡标题旁展示 `live` / `stale` badge；client events 区块有独立 `live` / `stale` badge；任一端点轮询失败保留上次数据并标为 `stale`
 - 路由参数变化或组件卸载时取消进行中的请求（`AbortSignal`）并停止轮询
 
 **当前 server 行为**：统计为**全时段聚合**（stats 端点无 `from`/`to` 参数）；非 `published` update 的 stats 端点返回空对象。  
@@ -441,16 +440,40 @@ ConfirmModal「Creates a new pending draft from this update」
 
 仅 `status=published` 时统计有意义；pending 显示 EmptyState「Not published yet」。
 
-#### 7.5.3 Manifest 预览
+#### 7.5.3 Client events
+
+数据来自 `ListUpdateClientEventsResp.items`（`ClientEventItem[]`）；仅 `status=published` 时有意义。
+
+**表格列**：
+
+| 列 | 字段 | 展示 |
+| -- | ---- | ---- |
+| Type | `eventType` | `UBadge`：`update_failed`=error，其余 success |
+| Device | `deviceId` | mono truncate |
+| Error code | `errorCode` | mono；空则 `—` |
+| Error message | `errorMessage` | 可换行；空则 `—` |
+| Duration | `durationMs` | `{n} ms`；空则 `—` |
+| Occurred | `occurredAt` | `TimeAgo` |
+
+**加载与刷新**：
+
+- 首屏：`loadInitial` 在 `status=published` 时触发一次 `refreshLiveData`（与 stats 并行）
+- 轮询：与 §7.5.2 共用 5s 定时器；`listUpdateClientEvents` 失败时标 `stale`，保留上次行
+- 非 `published`：EmptyState「Not published yet」
+- 已发布但 `items` 为空：EmptyState「No client events yet」
+
+**当前 server 行为**：固定返回最近 **100** 条（`occurred_at` 降序），无 cursor / 时间范围 / 筛选参数。
+
+#### 7.5.4 Manifest 预览
 
 - `JsonPreview` 绑定 `manifestPreview`（server 已 parse 的 JSON）
 - 折叠默认 closed，避免大 JSON 卡顿
 
-#### 7.5.4 Assets 表
+#### 7.5.5 Assets 表
 
 `assets[]`：`key`、`sha256`（truncate）、`size`（human readable）、`url`（外链）
 
-#### 7.5.5 操作按钮
+#### 7.5.6 操作按钮
 
 | 操作 | 条件 | API |
 | ---- | ---- | --- |
@@ -464,6 +487,7 @@ Delete 失败 400：`update must be at least 3 published versions behind...` →
 
 - `GET /api/admin/apps/:appSlug/updates/:updateId` — 详情（含 manifest、assets、首屏 stats）
 - `GET /api/admin/apps/:appSlug/updates/:updateId/stats` — 仅 stats（Dashboard 轮询用）
+- `GET /api/admin/apps/:appSlug/updates/:updateId/client-events` — 最近 100 条 client events（Dashboard 轮询用）
 
 ---
 
@@ -804,6 +828,7 @@ DELETE /api/admin/apps/:appSlug
 GET    /api/admin/apps/:appSlug/updates
 GET    /api/admin/apps/:appSlug/updates/:updateId
 GET    /api/admin/apps/:appSlug/updates/:updateId/stats
+GET    /api/admin/apps/:appSlug/updates/:updateId/client-events
 DELETE /api/admin/apps/:appSlug/updates/:updateId
 POST   /api/admin/apps/:appSlug/updates/:updateId/publish
 POST   /api/admin/apps/:appSlug/updates/:updateId/rollback
@@ -832,13 +857,14 @@ GET    /api/admin/apps/:appSlug/audit-logs
 3. **API Tokens** → 创建 token，配置 CI（仅 plan / finalize）  
 4. （可选）**Signing Key** → Generate → 配置客户端 `app.json`  
 5. CI `cli/publish.ts` finalize → **Updates** → Publish pending（管理员 JWT）  
-6. 真机验证 manifest → **Update Detail** 查看统计  
+6. 真机验证 manifest → **Update Detail** 查看统计与 client events  
 
 ### C. 已知差异与后续项
 
 | 项 | 现状 | 后续 |
 | -- | ---- | ---- |
 | Update 统计时间范围 | 全时段 | server 增加 `?from=&to=` + Dashboard 选择器 |
+| Client events 列表 | 最近 100 条，无分页/筛选 | cursor 分页、时间范围、eventType 筛选 |
 | `rolled_back_from` 详情字段 | 未在 `UpdateDetailResp` 暴露 | server 扩展响应或从 audit 关联 |
 | Dashboard 上传 | 不做 | 若需要人工发布，复用 plan/finalize API + 浏览器 COS PUT |
 | i18n | 单语 | 按需引入 `@nuxt/ui` locale |

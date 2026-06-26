@@ -48,6 +48,21 @@ type CleanupResp struct {
 	OrphanAssetCount int      `json:"orphanAssetCount"`
 }
 
+type ClientEventItem struct {
+	EventId        string `json:"eventId"`
+	EventType      string `json:"eventType"`
+	OccurredAt     string `json:"occurredAt"`
+	ReceivedAt     string `json:"receivedAt"`
+	DeviceId       string `json:"deviceId"`
+	AppVersion     string `json:"appVersion,optional"`
+	OsVersion      string `json:"osVersion,optional"`
+	DurationMs     int64  `json:"durationMs,optional"`
+	ErrorCode      string `json:"errorCode,optional"`
+	ErrorMessage   string `json:"errorMessage,optional"`
+	Platform       string `json:"platform,optional"`
+	RuntimeVersion string `json:"runtimeVersion,optional"`
+}
+
 type CreateAppReq struct {
 	AppSlug     string `json:"appSlug"`
 	Name        string `json:"name"`
@@ -141,6 +156,10 @@ type ListSigningKeysResp struct {
 
 type ListTokensResp struct {
 	Items []TokenItem `json:"items"`
+}
+
+type ListUpdateClientEventsResp struct {
+	Items []ClientEventItem `json:"items"`
 }
 
 type ListUpdatesReq struct {

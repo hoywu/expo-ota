@@ -316,3 +316,62 @@ func TestRollbackUpdateCreatesPendingCopy(t *testing.T) {
 		t.Errorf("UpdateId = %q", resp.UpdateId)
 	}
 }
+
+func TestListUpdateClientEventsReturnsRowsForPublishedUpdate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	update := newTestUpdate()
+	occurredAt := time.Date(2026, 5, 1, 2, 0, 0, 0, time.UTC)
+	receivedAt := time.Date(2026, 5, 1, 2, 0, 1, 0, time.UTC)
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Updates.EXPECT().FindOne(gomock.Any(), "update-1").Return(update, nil)
+	m.ClientEvents.EXPECT().ListByUpdate(gomock.Any(), "app-1", "11111111-2222-3333-4444-555555555555").Return([]*models.ClientEvents{
+		{
+			EventId:      "event-1",
+			EventType:    "update_failed",
+			OccurredAt:   occurredAt,
+			ReceivedAt:   receivedAt,
+			DeviceId:     "device-1",
+			ErrorCode:    sql.NullString{String: "ASSET_HASH_MISMATCH", Valid: true},
+			ErrorMessage: sql.NullString{String: "hash mismatch", Valid: true},
+		},
+	}, nil)
+
+	resp, err := NewListUpdateClientEventsLogic(context.Background(), svcCtx).ListUpdateClientEvents(&types.UpdateIdPath{
+		AppSlug: "my-app", UpdateId: "update-1",
+	})
+	if err != nil {
+		t.Fatalf("ListUpdateClientEvents returned error: %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("items = %+v", resp.Items)
+	}
+	if resp.Items[0].EventType != "update_failed" || resp.Items[0].ErrorCode != "ASSET_HASH_MISMATCH" {
+		t.Errorf("item = %+v", resp.Items[0])
+	}
+}
+
+func TestListUpdateClientEventsReturnsEmptyForPendingUpdate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	svcCtx, m := newFullTestSvcCtx(ctrl)
+
+	update := newTestUpdate()
+	update.Status = "pending"
+	update.PublishedAt = sql.NullTime{}
+
+	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
+	m.Updates.EXPECT().FindOne(gomock.Any(), "update-1").Return(update, nil)
+	m.ClientEvents.EXPECT().ListByUpdate(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+	resp, err := NewListUpdateClientEventsLogic(context.Background(), svcCtx).ListUpdateClientEvents(&types.UpdateIdPath{
+		AppSlug: "my-app", UpdateId: "update-1",
+	})
+	if err != nil {
+		t.Fatalf("ListUpdateClientEvents returned error: %v", err)
+	}
+	if len(resp.Items) != 0 {
+		t.Errorf("items = %+v", resp.Items)
+	}
+}

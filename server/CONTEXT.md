@@ -25,7 +25,7 @@ _Avoid_: file, resource, blob
 _Avoid_: payload, response body
 
 **ClientEvent**:
-客户端主动上报的 `update_succeeded` / `update_failed` 事件，用于可观测性。
+客户端主动上报的 `update_succeeded` / `update_failed` 事件，用于可观测性。Dashboard 通过 `GET .../client-events` 展示最近 100 条原始行（按 `manifest_uuid` 关联 update）。
 _Avoid_: telemetry, log, trace
 
 **ManifestRequest**:

@@ -120,6 +120,23 @@ type (
 		DurationMaxMs           int `json:"durationMaxMs,optional"`
 		DurationAvgMs           int `json:"durationAvgMs,optional"`
 	}
+	ClientEventItem {
+		EventId        string `json:"eventId"`
+		EventType      string `json:"eventType"`
+		OccurredAt     string `json:"occurredAt"`
+		ReceivedAt     string `json:"receivedAt"`
+		DeviceId       string `json:"deviceId"`
+		AppVersion     string `json:"appVersion,optional"`
+		OsVersion      string `json:"osVersion,optional"`
+		DurationMs     int64  `json:"durationMs,optional"`
+		ErrorCode      string `json:"errorCode,optional"`
+		ErrorMessage   string `json:"errorMessage,optional"`
+		Platform       string `json:"platform,optional"`
+		RuntimeVersion string `json:"runtimeVersion,optional"`
+	}
+	ListUpdateClientEventsResp {
+		Items []ClientEventItem `json:"items"`
+	}
 	UpdateListItem {
 		Id             string `json:"id"`
 		RuntimeVersion string `json:"runtimeVersion"`
@@ -444,6 +461,9 @@ service admin-api {
 
 	@handler GetUpdateStats
 	get /apps/:appSlug/updates/:updateId/stats (UpdateIdPath) returns (UpdateStatsResp)
+
+	@handler ListUpdateClientEvents
+	get /apps/:appSlug/updates/:updateId/client-events (UpdateIdPath) returns (ListUpdateClientEventsResp)
 
 	@handler DeleteUpdate
 	delete /apps/:appSlug/updates/:updateId (UpdateIdPath) returns (EmptyResp)

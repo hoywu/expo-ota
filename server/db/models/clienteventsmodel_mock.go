@@ -236,6 +236,45 @@ func (c *MockClientEventsModelInsertIgnoreConflictCall) DoAndReturn(f func(conte
 	return c
 }
 
+// ListByUpdate mocks base method.
+func (m *MockClientEventsModel) ListByUpdate(ctx context.Context, appId, manifestUuid string) ([]*ClientEvents, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByUpdate", ctx, appId, manifestUuid)
+	ret0, _ := ret[0].([]*ClientEvents)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByUpdate indicates an expected call of ListByUpdate.
+func (mr *MockClientEventsModelMockRecorder) ListByUpdate(ctx, appId, manifestUuid any) *MockClientEventsModelListByUpdateCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByUpdate", reflect.TypeOf((*MockClientEventsModel)(nil).ListByUpdate), ctx, appId, manifestUuid)
+	return &MockClientEventsModelListByUpdateCall{Call: call}
+}
+
+// MockClientEventsModelListByUpdateCall wrap *gomock.Call
+type MockClientEventsModelListByUpdateCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockClientEventsModelListByUpdateCall) Return(arg0 []*ClientEvents, arg1 error) *MockClientEventsModelListByUpdateCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockClientEventsModelListByUpdateCall) Do(f func(context.Context, string, string) ([]*ClientEvents, error)) *MockClientEventsModelListByUpdateCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockClientEventsModelListByUpdateCall) DoAndReturn(f func(context.Context, string, string) ([]*ClientEvents, error)) *MockClientEventsModelListByUpdateCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // StatsByUpdate mocks base method.
 func (m *MockClientEventsModel) StatsByUpdate(ctx context.Context, appId, manifestUuid string) (*ClientEventUpdateStats, error) {
 	m.ctrl.T.Helper()

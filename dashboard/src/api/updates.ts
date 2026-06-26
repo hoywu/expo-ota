@@ -2,6 +2,7 @@ import { apiRequest, buildQuery } from './client';
 import type {
   CleanupReq,
   CleanupResp,
+  ListUpdateClientEventsResp,
   ListUpdatesParams,
   ListUpdatesResp,
   PublishResp,
@@ -42,6 +43,17 @@ export function getUpdateStats(
 ): Promise<UpdateStatsResp> {
   return apiRequest<UpdateStatsResp>(
     `/apps/${encodeURIComponent(appSlug)}/updates/${encodeURIComponent(updateId)}/stats`,
+    { signal }
+  );
+}
+
+export function listUpdateClientEvents(
+  appSlug: string,
+  updateId: string,
+  signal?: AbortSignal
+): Promise<ListUpdateClientEventsResp> {
+  return apiRequest<ListUpdateClientEventsResp>(
+    `/apps/${encodeURIComponent(appSlug)}/updates/${encodeURIComponent(updateId)}/client-events`,
     { signal }
   );
 }

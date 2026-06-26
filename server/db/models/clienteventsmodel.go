@@ -8,6 +8,8 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+const listByUpdateLimit = 100
+
 var _ ClientEventsModel = (*customClientEventsModel)(nil)
 
 type (
@@ -28,6 +30,8 @@ type (
 		// StatsByUpdate aggregates success/failure devices and durations for
 		// the update identified by manifest UUID (manifest.id / expo-current-update-id).
 		StatsByUpdate(ctx context.Context, appId, manifestUuid string) (*ClientEventUpdateStats, error)
+		// ListByUpdate returns the most recent client events for the update, newest first.
+		ListByUpdate(ctx context.Context, appId, manifestUuid string) ([]*ClientEvents, error)
 		// InsertIgnoreConflict inserts a client event, deduplicating on
 		// (app_id, event_id) so client retries do not double-count. It
 		// reports whether a new row was actually inserted (§5.6 idempotency).
@@ -84,4 +88,16 @@ func (m *customClientEventsModel) StatsByUpdate(ctx context.Context, appId, mani
 		return nil, err
 	}
 	return &resp, nil
+}
+
+func (m *customClientEventsModel) ListByUpdate(ctx context.Context, appId, manifestUuid string) ([]*ClientEvents, error) {
+	query := fmt.Sprintf(
+		"select %s from %s where app_id = $1 and manifest_uuid = $2 order by occurred_at desc limit %d",
+		clientEventsRows, m.table, listByUpdateLimit)
+	var resp []*ClientEvents
+	err := m.conn.QueryRowsCtx(ctx, &resp, query, appId, manifestUuid)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
