@@ -34,10 +34,22 @@ func main() {
 		log.Fatalf("init COS store: %v", err)
 	}
 
-	assets := models.NewAssetsModel(sqlx.NewSqlConn("postgres", dbURL))
+	conn := sqlx.NewSqlConn("postgres", dbURL)
+	assets := models.NewAssetsModel(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
+
+	deletedUpdates, blockedUpdates, err := purgeSoftDeletedUpdates(ctx, conn)
+	if err != nil {
+		log.Fatalf("purge soft-deleted updates: %v", err)
+	}
+	if blockedUpdates > 0 {
+		log.Printf("asset-gc: hard-deleted %d soft-deleted update(s), %d still blocked by rollback references",
+			deletedUpdates, blockedUpdates)
+	} else if deletedUpdates > 0 {
+		log.Printf("asset-gc: hard-deleted %d soft-deleted update(s)", deletedUpdates)
+	}
 
 	orphans, err := assets.FindOrphans(ctx)
 	if err != nil {
@@ -62,4 +74,35 @@ func main() {
 	}
 
 	log.Printf("asset-gc done: %d orphan(s) found, %d deleted, %d failed", len(orphans), deleted, failed)
+}
+
+func purgeSoftDeletedUpdates(ctx context.Context, conn sqlx.SqlConn) (deletedTotal, blocked int64, err error) {
+	for {
+		result, err := conn.ExecCtx(ctx, `
+			delete from "public"."updates" u
+			where u.deleted_at is not null
+			  and not exists (
+				select 1 from "public"."updates" child
+				where child.rolled_back_from = u.id
+			  )`)
+		if err != nil {
+			return 0, 0, err
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return 0, 0, err
+		}
+		deletedTotal += affected
+		if affected == 0 {
+			break
+		}
+	}
+
+	err = conn.QueryRowCtx(ctx, &blocked, `
+		select count(*) from "public"."updates"
+		where deleted_at is not null`)
+	if err != nil {
+		return 0, 0, err
+	}
+	return deletedTotal, blocked, nil
 }
