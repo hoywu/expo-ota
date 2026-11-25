@@ -132,6 +132,10 @@ bun run cli/publish.ts
 
 This creates a **pending** update. Open the dashboard and click **Publish** when you are ready for devices to receive it.
 
+For a Windows Electron client, set `OTA_PLATFORM=windows` and point `OTA_DIST_DIR` at the Web export containing `index.html`. The CLI records every exported path in `metadata.windowsFiles`. Each value identifies an asset in `launchAsset` or `assets`, whose signed manifest entry supplies the SHA-256 digest and HTTPS download URL. Multiple paths can share one asset.
+
+The desktop client requests the existing manifest endpoint with `expo-platform: windows`, its embedded runtime version, `expo-protocol-version: 1`, `Accept: application/expo+json`, and `expo-expect-signature`. It verifies the signature using a pinned certificate. A 204 response means the client can keep its current version. Windows updates use the same pending, publish and republish workflow as mobile updates.
+
 ### 3. Deploy the server
 
 Backend runs via Docker Compose; the dashboard is built as static files and served by your reverse proxy (Nginx, Caddy, etc.).

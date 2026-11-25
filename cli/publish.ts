@@ -23,8 +23,8 @@ import { $ } from "bun";
 import logUpdate from "log-update";
 import mime from "mime";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { extname, join, relative, sep } from "node:path";
 
 /** Max parallel PUT uploads. Override with OTA_UPLOAD_CONCURRENCY. */
 const UPLOAD_CONCURRENCY = Math.max(
@@ -32,7 +32,7 @@ const UPLOAD_CONCURRENCY = Math.max(
   Number.parseInt(process.env.OTA_UPLOAD_CONCURRENCY ?? "4", 10) || 4,
 );
 
-type Platform = "ios" | "android";
+type Platform = "ios" | "android" | "windows";
 
 interface PlanAssetItem {
   key: string;
@@ -43,6 +43,7 @@ interface PlanAssetItem {
 }
 
 interface PlanMissingItem {
+  size: number;
   key: string;
   putUrl: string;
   putHeaders: Record<string, string>;
@@ -78,10 +79,10 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function parsePlatform(raw: string): Platform {
-  if (raw === "ios" || raw === "android") return raw;
+export function parsePlatform(raw: string): Platform {
+  if (raw === "ios" || raw === "android" || raw === "windows") return raw;
   throw new Error(
-    `OTA_PLATFORM must be "ios" or "android", got ${JSON.stringify(raw)}`,
+    `OTA_PLATFORM must be "ios", "android" or "windows", got ${JSON.stringify(raw)}`,
   );
 }
 
@@ -193,7 +194,7 @@ async function resolveGitCommitHash(): Promise<string | undefined> {
   return hash || undefined;
 }
 
-async function resolveMessage(): Promise<string> {
+export async function resolveMessage(): Promise<string> {
   if (process.env.OTA_MESSAGE !== undefined) {
     return process.env.OTA_MESSAGE.trim();
   }
@@ -308,33 +309,48 @@ async function collectAssets(
   dist: string,
   platform: Platform,
   metadata: Record<string, unknown>,
-): Promise<{
-  assets: PlanAssetItem[];
-  buffersByKey: Map<string, Buffer>;
-  pathsByKey: Map<string, string>;
-}> {
-  const { bundle, assets: metadataAssets } = parsePlatformMetadata(
-    metadata,
-    platform,
-  );
-
-  const specs: {
-    relPath: string;
-    contentType: string;
-    fileExt: string;
-  }[] = [
-    {
+) {
+  const specs: { relPath: string; contentType: string; fileExt: string }[] = [];
+  const windowsFiles: Record<string, string> = Object.create(null);
+  if (platform === "windows") {
+    const entries = await readdir(dist, {
+      recursive: true,
+      withFileTypes: true,
+    });
+    for (const entry of entries) {
+      if (entry.isDirectory()) continue;
+      if (!entry.isFile())
+        throw new Error("Unsupported dist entry: " + entry.name);
+      const relPath = relative(dist, join(entry.parentPath, entry.name))
+        .split(sep)
+        .join("/");
+      const fileExt = extname(relPath);
+      specs.push({
+        relPath,
+        contentType: contentTypeFromExt(fileExt),
+        fileExt,
+      });
+    }
+    if (!specs.some((file) => file.relPath === "index.html"))
+      throw new Error("Windows dist requires index.html");
+    specs.sort((a, b) =>
+      a.relPath < b.relPath ? -1 : a.relPath > b.relPath ? 1 : 0,
+    );
+  } else {
+    const { bundle, assets } = parsePlatformMetadata(metadata, platform);
+    specs.push({
       relPath: bundle,
       contentType: "application/javascript",
       fileExt: ".bundle",
-    },
-    ...metadataAssets.map((asset) => ({
-      relPath: asset.path,
-      contentType: contentTypeFromExt(asset.ext),
-      fileExt: normalizeExt(asset.ext),
-    })),
-  ];
-
+    });
+    for (const asset of assets) {
+      specs.push({
+        relPath: asset.path,
+        contentType: contentTypeFromExt(asset.ext),
+        fileExt: normalizeExt(asset.ext),
+      });
+    }
+  }
   const seen = new Set<string>();
   const uniqueSpecs = specs.filter((spec) => {
     if (seen.has(spec.relPath)) return false;
@@ -343,7 +359,6 @@ async function collectAssets(
   });
 
   const assets: PlanAssetItem[] = [];
-  const buffersByKey = new Map<string, Buffer>();
   const pathsByKey = new Map<string, string>();
 
   for (const spec of uniqueSpecs) {
@@ -352,24 +367,37 @@ async function collectAssets(
     try {
       buf = await readFile(absPath);
     } catch {
-      throw new Error(
-        `Asset not found: ${spec.relPath} (metadata.json fileMetadata.${platform})`,
-      );
+      throw new Error(`Asset not found: ${spec.relPath}`);
     }
 
     const key = md5(buf);
+    const sha256 = sha256B64url(buf);
+    if (platform === "windows") {
+      windowsFiles[spec.relPath] = key;
+      if (pathsByKey.has(key)) {
+        if (
+          !assets.some((asset) => asset.key === key && asset.sha256 === sha256)
+        ) {
+          throw new Error("Conflicting content for asset key " + key);
+        }
+        continue;
+      }
+    }
     assets.push({
       key,
-      sha256: sha256B64url(buf),
+      sha256,
       size: buf.length,
       contentType: spec.contentType,
       fileExt: spec.fileExt,
     });
-    buffersByKey.set(key, buf);
     pathsByKey.set(key, spec.relPath);
   }
 
-  return { assets, buffersByKey, pathsByKey };
+  return {
+    assets,
+    pathsByKey,
+    manifestMetadata: platform === "windows" ? { windowsFiles } : metadata,
+  };
 }
 
 async function adminFetch<T>(
@@ -437,7 +465,7 @@ async function uploadOne(
 
 async function uploadMissing(
   missing: PlanMissingItem[],
-  buffersByKey: Map<string, Buffer>,
+  dist: string,
   pathsByKey: Map<string, string>,
 ): Promise<void> {
   if (missing.length === 0) return;
@@ -446,10 +474,7 @@ async function uploadMissing(
     totalFiles: missing.length,
     completedFiles: 0,
     completedBytes: 0,
-    totalBytes: missing.reduce(
-      (sum, item) => sum + (buffersByKey.get(item.key)?.length ?? 0),
-      0,
-    ),
+    totalBytes: missing.reduce((sum, item) => sum + item.size, 0),
     active: new Map(),
   };
 
@@ -462,12 +487,12 @@ async function uploadMissing(
       if (index >= missing.length) return;
 
       const item = missing[index]!;
-      const buf = buffersByKey.get(item.key);
-      if (!buf) {
+      const label = pathsByKey.get(item.key);
+      if (!label) {
         throw new Error(`local file not found for asset key ${item.key}`);
       }
 
-      const label = pathsByKey.get(item.key) ?? item.key;
+      const buf = await readFile(join(dist, label));
       await uploadOne(item, buf, label, state, redraw);
     }
   };
@@ -495,8 +520,8 @@ async function main(): Promise<void> {
   const runtimeVersion = requireEnv("OTA_RUNTIME_VERSION");
   const [manifestMetadata, expoConfig, gitCommitHash, message] =
     await Promise.all([
-      readJson(join(dist, "metadata.json")),
-      readJson(join(dist, "expoConfig.json")),
+      platform === "windows" ? {} : readJson(join(dist, "metadata.json")),
+      platform === "windows" ? {} : readJson(join(dist, "expoConfig.json")),
       resolveGitCommitHash(),
       resolveMessage(),
     ]);
@@ -506,7 +531,7 @@ async function main(): Promise<void> {
   const payload: UploadPayload = {
     runtimeVersion,
     platform,
-    manifestMetadata,
+    manifestMetadata: collected.manifestMetadata,
     expoConfig,
     message,
     assets: collected.assets,
@@ -527,11 +552,7 @@ async function main(): Promise<void> {
   );
 
   if (plan.missing.length > 0) {
-    await uploadMissing(
-      plan.missing,
-      collected.buffersByKey,
-      collected.pathsByKey,
-    );
+    await uploadMissing(plan.missing, dist, collected.pathsByKey);
   }
 
   const finalized = await adminFetch<FinalizeResp>(
