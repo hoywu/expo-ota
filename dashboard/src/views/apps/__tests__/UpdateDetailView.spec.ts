@@ -31,7 +31,7 @@ vi.mock('@/api/updates', () => ({
   publishUpdate,
 }));
 
-const push = vi.fn();
+const push = vi.fn<(path: string) => void>();
 vi.mock('vue-router', async (importOriginal) => {
   const { reactive } = await import('vue');
   const actual = await importOriginal<typeof import('vue-router')>();
@@ -57,7 +57,7 @@ const mockStats: UpdateStatsResp = {
   durationAvgMs: 250,
 };
 
-const mockClientEvents: ClientEventItem[] = [
+const mockClientEvents: [ClientEventItem] = [
   {
     eventId: 'event-1',
     eventType: 'update_failed',
@@ -240,8 +240,10 @@ describe('UpdateDetailView', () => {
     expect(getUpdate).toHaveBeenLastCalledWith('other-app', 'update-1', expect.any(AbortSignal));
   });
 
-  it('starts polling after publish', async () => {
-    getUpdate.mockResolvedValueOnce(pendingDetail).mockResolvedValueOnce(publishedDetail);
+  it('starts polling after publishing a Windows draft', async () => {
+    getUpdate
+      .mockResolvedValueOnce({ ...pendingDetail, platform: 'windows' })
+      .mockResolvedValueOnce({ ...publishedDetail, platform: 'windows' });
     publishUpdate.mockResolvedValue({ updateId: 'update-1' });
     getUpdateStats.mockResolvedValue({ ...mockStats, requestedDevices: 7 });
 
@@ -249,7 +251,9 @@ describe('UpdateDetailView', () => {
     await flushPromises();
     expect(getUpdateStats).not.toHaveBeenCalled();
 
-    await wrapper.get('button', { text: 'Publish' }).trigger('click');
+    const publishButton = wrapper.findAll('button').find((button) => button.text() === 'Publish');
+    expect(publishButton).toBeDefined();
+    await publishButton!.trigger('click');
     await flushPromises();
     expect(getUpdateStats).toHaveBeenCalledTimes(1);
 

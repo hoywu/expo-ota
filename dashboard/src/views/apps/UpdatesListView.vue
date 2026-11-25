@@ -43,6 +43,7 @@ const platformOptions = [
   { label: 'All', value: undefined },
   { label: 'iOS', value: 'ios' },
   { label: 'Android', value: 'android' },
+  { label: 'Windows', value: 'windows' },
 ];
 
 const statusOptions = [
@@ -264,9 +265,11 @@ const columns = [
           <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
             <UIcon
               :name="
-                row.original.platform === 'ios'
-                  ? 'i-lucide-smartphone'
-                  : 'i-lucide-tablet-smartphone'
+                row.original.platform === 'windows'
+                  ? 'i-lucide-monitor'
+                  : row.original.platform === 'ios'
+                    ? 'i-lucide-smartphone'
+                    : 'i-lucide-tablet-smartphone'
               "
               class="size-4 shrink-0"
             />
