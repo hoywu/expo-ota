@@ -115,15 +115,22 @@ func TestManifestServesUpdateMultipart(t *testing.T) {
 }
 
 func TestManifestServesUpdateJSON(t *testing.T) {
+	for _, platform := range []string{"ios", "windows"} {
+		t.Run(platform, func(t *testing.T) { testManifestServesUpdateJSON(t, platform) })
+	}
+}
+
+func testManifestServesUpdateJSON(t *testing.T, platform string) {
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newTestSvcCtx(ctrl)
 
 	m.Apps.EXPECT().FindOneByAppSlug(gomock.Any(), "my-app").Return(newTestApp(), nil)
 	m.RuntimeVersions.EXPECT().FindOneByAppIdVersion(gomock.Any(), "app-1", "1.0.0").Return(newTestRuntimeVersion(), nil)
-	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", "ios").
+	m.Updates.EXPECT().FindLatestPublished(gomock.Any(), "app-1", "rv-1", platform).
 		Return(&models.Updates{Id: "u-1", ManifestUuid: "abc", ManifestSnapshot: testSnapshot}, nil)
 
 	req := baseManifestReq()
+	req.Platform = platform
 	req.Accept = mediaExpoJSON
 	res, err := NewManifestLogic(context.Background(), svcCtx).Manifest(req)
 	if err != nil {

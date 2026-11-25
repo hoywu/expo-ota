@@ -143,6 +143,18 @@ func TestFinalizeUploadSizeMismatch(t *testing.T) {
 }
 
 func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
+	for _, platform := range []string{"ios", "windows"} {
+		t.Run(platform, func(t *testing.T) { testFinalizePendingDraft(t, platform) })
+	}
+}
+
+func testFinalizePendingDraft(t *testing.T, platform string) {
+	var metadata map[string]any
+	contentType := "application/javascript"
+	if platform == "windows" {
+		contentType = "text/html"
+		metadata = map[string]any{"windowsFiles": map[string]any{"index.html": "bundlekey", "login.html": "bundlekey", "assets/logo.png": "imgkey"}}
+	}
 	ctrl := gomock.NewController(t)
 	svcCtx, m := newFullTestSvcCtx(ctrl)
 
@@ -158,7 +170,7 @@ func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
 	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", bundleRaw).
 		Return(&models.Assets{
 			Id: "asset-bundle", AppId: "app-1", Sha256B64url: bundleSha,
-			SizeBytes: 100, ContentType: "application/javascript",
+			SizeBytes: 100, ContentType: contentType,
 			StorageKey: "apps/my-app/assets/" + bundleSha,
 		}, nil)
 	m.Assets.EXPECT().FindOneByAppIdSha256(gomock.Any(), "app-1", imgRaw).
@@ -196,6 +208,9 @@ func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
 			if err := json.Unmarshal([]byte(update.ManifestSnapshot), &manifest); err != nil {
 				t.Fatalf("snapshot is not JSON: %v", err)
 			}
+			if platform == "windows" && !strings.Contains(update.ManifestMetadata, "login.html") {
+				t.Error("Windows file aliases missing from metadata")
+			}
 			if manifest["id"] != update.ManifestUuid {
 				t.Error("snapshot id != manifest uuid")
 			}
@@ -216,10 +231,10 @@ func TestFinalizeUploadCreatesPendingDraft(t *testing.T) {
 	resp, err := NewFinalizeUploadLogic(ctxWithUserID("user-1"), svcCtx).FinalizeUpload(&types.FinalizeReq{
 		AppSlug:        "my-app",
 		RuntimeVersion: "1.0.0",
-		Platform:       "ios",
-		Message:        "fix checkout",
+		Platform:       platform, ManifestMetadata: metadata,
+		Message: "fix checkout",
 		Assets: []types.PlanAssetItem{
-			{Key: "bundlekey", Sha256: bundleSha, Size: 100, ContentType: "application/javascript", FileExt: ".hbc"},
+			{Key: "bundlekey", Sha256: bundleSha, Size: 100, ContentType: contentType, FileExt: ".hbc"},
 			{Key: "imgkey", Sha256: imgSha, Size: 50, ContentType: "image/png", FileExt: ".png"},
 		},
 	})
@@ -284,4 +299,24 @@ func TestFinalizeUploadRequiresLaunchAsset(t *testing.T) {
 		t.Errorf("err = %v, want launch asset error", err)
 	}
 	_ = sql.ErrNoRows
+}
+
+func TestWindowsPlanRejectsInvalidPathsAndReferences(t *testing.T) {
+	for _, files := range []map[string]any{
+		{"index.html": "key", "../file": "key"},
+		{"index.html": "key", "NUL.png": "key"},
+		{"index.html": "key", "INDEX.html": "key"},
+		{"index.html": "key", "index.html/child": "key"},
+		{"index.html": "missing"},
+		{"page.html": "key"},
+	} {
+		ctx, _ := newFullTestSvcCtx(gomock.NewController(t))
+		_, err := NewPlanUploadLogic(context.Background(), ctx).PlanUpload(&types.PlanReq{
+			Platform: "windows", Assets: []types.PlanAssetItem{{Key: "key"}},
+			ManifestMetadata: map[string]any{"windowsFiles": files},
+		})
+		if err == nil {
+			t.Errorf("accepted invalid files %v", files)
+		}
+	}
 }

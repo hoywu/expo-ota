@@ -99,7 +99,7 @@ type ErrorResp struct {
 type FinalizeReq struct {
 	AppSlug          string                 `path:"appSlug"`
 	RuntimeVersion   string                 `json:"runtimeVersion"`
-	Platform         string                 `json:"platform,options=ios|android"`
+	Platform         string                 `json:"platform,options=ios|android|windows"`
 	ManifestMetadata map[string]interface{} `json:"manifestMetadata,optional"`
 	ExpoConfig       map[string]interface{} `json:"expoConfig,optional"`
 	Message          string                 `json:"message,optional"`
@@ -164,7 +164,7 @@ type ListUpdateClientEventsResp struct {
 
 type ListUpdatesReq struct {
 	AppSlug        string `path:"appSlug"`
-	Platform       string `form:"platform,options=ios|android,optional"`
+	Platform       string `form:"platform,options=ios|android|windows,optional"`
 	RuntimeVersion string `form:"runtimeVersion,optional"`
 	Status         string `form:"status,options=pending|published,optional"`
 	Limit          int    `form:"limit,default=20"`
@@ -225,7 +225,7 @@ type PlanMissingItem struct {
 type PlanReq struct {
 	AppSlug          string                 `path:"appSlug"`
 	RuntimeVersion   string                 `json:"runtimeVersion"`
-	Platform         string                 `json:"platform,options=ios|android"`
+	Platform         string                 `json:"platform,options=ios|android|windows"`
 	ManifestMetadata map[string]interface{} `json:"manifestMetadata,optional"`
 	ExpoConfig       map[string]interface{} `json:"expoConfig,optional"`
 	Message          string                 `json:"message,optional"`

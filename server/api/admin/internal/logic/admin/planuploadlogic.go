@@ -39,6 +39,12 @@ func (l *PlanUploadLogic) PlanUpload(req *types.PlanReq) (resp *types.PlanResp, 
 		return nil, errNoAssets
 	}
 
+	if req.Platform == "windows" {
+		if _, err := windowsEntry(req.ManifestMetadata, req.Assets); err != nil {
+			return nil, err
+		}
+	}
+
 	app, err := findActiveApp(l.ctx, l.svcCtx, req.AppSlug)
 	if err != nil {
 		return nil, err

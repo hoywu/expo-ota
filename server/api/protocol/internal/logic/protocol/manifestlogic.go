@@ -23,7 +23,7 @@ var noUpdateAvailableDirective = []byte(`{"type":"noUpdateAvailable"}`)
 
 var (
 	errBadProtocolVersion = httperr.New(http.StatusBadRequest, "expo-protocol-version must be 1")
-	errBadPlatform        = httperr.New(http.StatusBadRequest, "expo-platform must be ios or android")
+	errBadPlatform        = httperr.New(http.StatusBadRequest, "expo-platform must be ios, android or windows")
 	errMissingRuntime     = httperr.New(http.StatusBadRequest, "expo-runtime-version is required")
 	errSigningUnavailable = httperr.New(http.StatusInternalServerError, "code signing key is unavailable")
 )
@@ -51,7 +51,7 @@ func (l *ManifestLogic) Manifest(req *types.ManifestReq) (*ManifestResponse, err
 	if req.ProtocolVersion != "1" {
 		return nil, errBadProtocolVersion
 	}
-	if req.Platform != "ios" && req.Platform != "android" {
+	if req.Platform != "ios" && req.Platform != "android" && req.Platform != "windows" {
 		return nil, errBadPlatform
 	}
 	if req.RuntimeVersion == "" {

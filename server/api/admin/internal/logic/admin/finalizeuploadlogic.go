@@ -52,7 +52,7 @@ func (l *FinalizeUploadLogic) FinalizeUpload(req *types.FinalizeReq) (resp *type
 		return nil, err
 	}
 
-	launchKey, err := findLaunchAssetKey(req.Assets)
+	launchKey, err := findLaunchAssetKey(req)
 	if err != nil {
 		return nil, err
 	}
@@ -174,11 +174,13 @@ func (l *FinalizeUploadLogic) FinalizeUpload(req *types.FinalizeReq) (resp *type
 	}, nil
 }
 
-// findLaunchAssetKey locates the launch asset (the JS bundle) in the
-// declared asset list.
-func findLaunchAssetKey(assets []types.PlanAssetItem) (string, error) {
+// Windows has an explicit HTML entry. Mobile exports contain a single JS launch bundle.
+func findLaunchAssetKey(req *types.FinalizeReq) (string, error) {
+	if req.Platform == "windows" {
+		return windowsEntry(req.ManifestMetadata, req.Assets)
+	}
 	launchKey := ""
-	for _, asset := range assets {
+	for _, asset := range req.Assets {
 		if asset.ContentType == "application/javascript" {
 			if launchKey != "" {
 				return "", errNoLaunchAsset
